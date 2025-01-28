@@ -1,17 +1,15 @@
 # user_handlers.py
 
-from aiogram import Router
+from aiogram import Router, types
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, InputFile
-
+from aiogram.types import Message, CallbackQuery, InputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from config_data import config
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from keyboards.buttons import create_inline_kb
 from lexicon.lexicon import LEXICON_TEXT, LEXICON_NOTIFICATION_SEND
 from logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data, user_data
-from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_all_years_in_one
-
-
+from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_mobile, graf_not_mobile
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -86,10 +84,25 @@ async def send_html_graph(message: Message):
     dollar = dinamic_course(dollarCod)
     dollar_data = parse_xml_data(dollar)
     # Генерация графика
-    file_path = graf_all_years_in_one(dollar_data)
+    file_path = graf_mobile(dollar_data)
 
-    # Отправка HTML-файла пользователю
-    # await message.answer_document(InputFile(file_path))
+
+    # Создаем кнопку для Web App
+    button_mobile = InlineKeyboardButton(
+        text="График на телефоне",  # Текст на кнопке
+        web_app=types.WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
+    )
+    button_pc = InlineKeyboardButton(
+        text="График на ПК",  # Текст на кнопке
+        callback_data= graf_not_mobile(dollar_data)
+    )
+
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[button_mobile], [button_pc]]
+    )
+    # Отправляем сообщение с кнопкой
+    await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
 
 
 # @router.message(Command(commands=["chart"]))
@@ -98,7 +111,7 @@ async def send_html_graph(message: Message):
 #     dollarCod = 'R01235'
 #     dollar = dinamic_course(dollarCod)
 #     dollar_data = parse_xml_data(dollar)
-#     await message.answer(graf_all_years_in_one(dollar_data))
+#     await message.answer(graf(dollar_data))
 
 
 # Этот хэндлер будет срабатывать на команду "/help"

@@ -30,7 +30,7 @@ def schedule_daily_greeting(user_id, scheduler):
             try:
                 scheduler.add_job(
                     send_greeting,
-                    CronTrigger(hour=10, minute=0, timezone='Europe/Moscow'),
+                    CronTrigger(hour=7, minute=00, timezone='Europe/Moscow'),
                     args=[user_id],
                     id=job_id
                 )
@@ -46,7 +46,7 @@ def schedule_interval_greeting(user_id, scheduler): # Добавили scheduler
         return
     else:
         try:
-            scheduler.add_job(send_greeting, IntervalTrigger(seconds=2), args=[user_id], id=f"interval_greeting_{user_id}")
+            scheduler.add_job(send_greeting, IntervalTrigger(minutes=10), args=[user_id], id=f"interval_greeting_{user_id}")
             logger.info(f"Задача с ID {job_id} успешно добавлена.")
         except Exception as e:
             logger.error(e)

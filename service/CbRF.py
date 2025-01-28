@@ -6,7 +6,6 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import requests
-from plotly.subplots import make_subplots
 
 from logging_settings import logger
 
@@ -55,7 +54,6 @@ def course_today():
         logger.info(f'Success. Received exchange rate for {today}')
     except Exception as e:
         logger.exception(e)
-
 
 
 def dinamic_course(cod):
@@ -148,7 +146,7 @@ def graf_each_year(dollar_data):
             print(f"Данные за {year} год не найдены.")
 
 
-def graf_all_years_in_one(dollar_data):
+def graf_mobile(dollar_data):
     # Создаем пустой DataFrame для объединения данных
     all_data = pd.DataFrame()
 
@@ -200,113 +198,51 @@ def graf_all_years_in_one(dollar_data):
     return file_path
 
 
-def graf_all_years_as_lines_in_one(dollar_data):
-    # Создаем пустой DataFrame для всех данных
+def graf_not_mobile(dollar_data):
+    # Создаем пустой DataFrame для объединения данных
     all_data = pd.DataFrame()
 
-    # Обрабатываем данные для каждого года
+    # Перебираем данные по годам и объединяем их в один DataFrame
     for year, data in dollar_data.items():
-        # Преобразуем данные в DataFrame
-        df = pd.DataFrame(list(data.items()), columns=['Дата', 'Курс'])
+        if data:
+            # Преобразование данных для DataFrame
+            data_for_df = [{'Дата': date_str, 'Курс': value, 'Год': year} for date_str, value in data.items()]
 
-        # Преобразуем строки дат в datetime, игнорируя год
-        df['Дата'] = pd.to_datetime(df['Дата'], format='%d.%m.%Y').apply(lambda x: x.replace(year=2000))
+            # Создаем временный DataFrame и добавляем его к общему
+            temp_df = pd.DataFrame(data_for_df)
+            all_data = pd.concat([all_data, temp_df], ignore_index=True)
 
-        # Добавляем колонку с годом
-        df['Год'] = year
+    # Преобразование строковых дат в datetime
+    all_data['Дата'] = pd.to_datetime(all_data['Дата'], format='%d.%m.%Y')
 
-        # Добавляем данные в общий DataFrame
-        all_data = pd.concat([all_data, df])
+    # Сортировка данных по дате
+    all_data = all_data.sort_values(by='Дата')
 
     # Создаем график
     fig = go.Figure()
 
-    # Добавляем линии для каждого года
+    # Перебираем уникальные годы и добавляем данные для каждого года на график
     for year in all_data['Год'].unique():
         year_data = all_data[all_data['Год'] == year]
         fig.add_trace(go.Scatter(
             x=year_data['Дата'],
             y=year_data['Курс'],
             mode='lines',
-            name=str(year)
+            name=f'Курс в {year}',
+            hoverinfo='x+y'
         ))
 
-    # Настраиваем оси и заголовок
+    # Настройка оформления
     fig.update_layout(
-        title='Курс доллара по датам (1 января - 31 декабря) для каждого года',
+        title='Курс доллара по годам',
         xaxis_title='Дата',
         yaxis_title='Курс',
         xaxis=dict(
-            tickformat='%d.%m',
-            dtick='M1',
+            tickformat='%d.%m.%y',
             tickangle=45
         ),
-        hovermode='x unified'
+        hovermode='x'
     )
-
-    # Отображаем график
-    return fig.show()
-
-
-def graf_all_years_cols_in_row(dollar_data, euro_data, cols):
-    # Функция для обработки данных
-    def process_data(data):
-        all_data = pd.DataFrame()
-        for year, rates in data.items():
-            df = pd.DataFrame(list(rates.items()), columns=['Дата', 'Курс'])
-            df['Дата'] = pd.to_datetime(df['Дата'], format='%d.%m.%Y')
-            df['Год'] = year
-            all_data = pd.concat([all_data, df])
-        return all_data
-
-    # Обрабатываем данные
-    dollar_df = process_data(dollar_data)
-    euro_df = process_data(euro_data)
-
-    # Получаем список уникальных лет
-    years = sorted(dollar_df['Год'].unique())
-
-    # Определяем количество строк и столбцов для подграфиков
-    cols = cols  # int
-    rows = (len(years) + cols - 1) // cols  # Округление вверх для получения полного числа строк
-
-    # Создаем подграфики
-    fig = make_subplots(rows=rows, cols=cols, subplot_titles=[f'Год {year}' for year in years])
-
-    # Добавляем данные для каждого года
-    for i, year in enumerate(years):
-        row = i // cols + 1
-        col = i % cols + 1
-
-        # Данные для доллара
-        dollar_year_data = dollar_df[dollar_df['Год'] == year]
-        fig.add_trace(go.Scatter(
-            x=dollar_year_data['Дата'],
-            y=dollar_year_data['Курс'],
-            mode='lines',
-            name=f'Доллар {year}',
-            line=dict(color='blue')
-        ), row=row, col=col)
-
-        # Данные для евро
-        euro_year_data = euro_df[euro_df['Год'] == year]
-        fig.add_trace(go.Scatter(
-            x=euro_year_data['Дата'],
-            y=euro_year_data['Курс'],
-            mode='lines',
-            name=f'Евро {year}',
-            line=dict(color='green')
-        ), row=row, col=col)
-
-    # Настраиваем общий заголовок и размеры
-    fig.update_layout(
-        height=rows * 300,  # Высота фигуры
-        width=cols * 450,  # Ширина фигуры
-        title_text='Курсы доллара и евро по годам',
-        showlegend=False  # Отключаем общую легенду
-    )
-
-    # Отображаем график
     return fig.show()
 
 
@@ -325,10 +261,4 @@ def analys_courses():
     dollar_data = parse_xml_data(dollar)
     euro_data = parse_xml_data(euro)
 
-    # graf_each_year(dollar_data)
-
-    graf_all_years_in_one(dollar_data)
-
-    # graf_all_years_as_lines_in_one(dollar_data)
-
-    # graf_all_years_cols_in_row(dollar_data,euro_data, 3)
+    graf(dollar_data)
