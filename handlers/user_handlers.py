@@ -89,7 +89,7 @@ async def send_html_graph(message: Message):
     file_path = graf_all_years_in_one(dollar_data)
 
     # Отправка HTML-файла пользователю
-    await message.answer_document(InputFile(file_path))
+    # await message.answer_document(InputFile(file_path))
 
 
 # @router.message(Command(commands=["chart"]))

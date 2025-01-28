@@ -195,7 +195,7 @@ def graf_all_years_in_one(dollar_data):
     )
 
     # Сохранение графика в HTML-файл
-    file_path = "save_files/index.html"
+    file_path = "index.html"
     fig.write_html(file_path)
     return file_path
 
