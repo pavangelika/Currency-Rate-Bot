@@ -6,4 +6,4 @@
 
 Нажмите на ссылку ниже, чтобы открыть график в вашем браузере:
 
-[Открыть график](https:/pavangelika.github.io/CurrencyRate/index.html)
+[Открыть график](https://pavangelika.github.io/CurrencyRate/)
