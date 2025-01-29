@@ -5,6 +5,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from logging_settings import logger
 from aiogram import Bot
 from config_data import config
+from aiogram.types import Message
 
 from service.CbRF import course_today
 
@@ -46,10 +47,41 @@ def schedule_interval_greeting(user_id, scheduler): # Добавили scheduler
         return
     else:
         try:
-            scheduler.add_job(send_greeting, IntervalTrigger(minutes=10), args=[user_id], id=f"interval_greeting_{user_id}")
+            scheduler.add_job(send_greeting, IntervalTrigger(minutes=10), args=[user_id], id=job_id)
             logger.info(f"Задача с ID {job_id} успешно добавлена.")
         except Exception as e:
             logger.error(e)
+
+
+def schedule_interval_user(user_id, reminder_text, minutes, scheduler):
+    """Запланировать отправку напоминания через указанное количество минут."""
+    job_id = f"interval_user_{user_id}"
+
+    if scheduler.get_job(job_id):
+        logger.info(f"Задача {job_id} уже существует. Пропускаем добавление.")
+        return
+
+    try:
+        scheduler.add_job(
+            send_reminder_message,
+            IntervalTrigger(minutes=minutes),
+            args=[user_id, reminder_text],
+            id=job_id
+        )
+        logger.info(f"Задача с ID {job_id} успешно добавлена.")
+        logger.info(f"Напоминание '{reminder_text}' для {user_id} запланировано через {minutes} минут.")
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении напоминания: {e}")
+
+
+async def send_reminder_message(user_id, reminder_text):
+    """Отправляет пользователю сохранённый текст напоминания."""
+    try:
+        logger.info(f"Отправка напоминания '{reminder_text}' пользователю {user_id}")
+        await bot.send_message(chat_id=user_id, text=f"🔔 {reminder_text}")
+        logger.info(f"Напоминание успешно отправлено пользователю {user_id}")
+    except Exception as e:
+        logger.error(f"Ошибка при отправке напоминания: {e}")
 
 def schedule_unsubscribe(job_id, scheduler):
     # Удаляем задачи из расписания

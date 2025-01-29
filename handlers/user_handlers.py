@@ -2,25 +2,36 @@
 
 from aiogram import Router, types
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, InputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from config_data import config
-from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
+
+from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe, \
+    schedule_interval_user
 from keyboards.buttons import create_inline_kb
 from lexicon.lexicon import LEXICON_TEXT, LEXICON_NOTIFICATION_SEND
 from logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_mobile, graf_not_mobile
 
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+
+class ReminderState(StatesGroup):
+    waiting_for_minutes = State()
+    waiting_for_text = State()
+
+
 # Инициализируем роутер уровня модуля
 router = Router()
-
 
 # Глобальная переменная для планировщика
 scheduler = None
 
+
 def set_scheduler(sched):
     global scheduler
     scheduler = sched
+
 
 # Этот хэндлер будет срабатывать на команду "/start"
 @router.message(Command(commands=["start"]))
@@ -32,6 +43,7 @@ async def process_start_handler(message: Message):
         reply_markup=keyboard)
     await save_user_data(message)
 
+
 @router.message(Command(commands=["today"]))
 async def send_today_handler(message: Message):
     try:
@@ -39,18 +51,20 @@ async def send_today_handler(message: Message):
     except Exception as e:
         logger.error(e)
 
+
 @router.message(Command(commands=["everyday"]))
 async def send_today_schedule_handler(message: Message):
     user_id = message.from_user.id
     if user_id in user_data:
         try:
-            await update_user_data(message, "everyday_true", True) #"send_today": True
+            await update_user_data(message, "everyday_true", True)  # "send_today": True
             schedule_daily_greeting(user_id, scheduler)
         except Exception as e:
             logger.error(f"Error in send_today_schedule_handler: {e}")
         else:
             await message.answer(
                 text=LEXICON_NOTIFICATION_SEND['everyday_true'])
+
 
 @router.message(Command(commands=["exchange_rate"]))
 async def send_today_schedule_handler(message: Message):
@@ -86,7 +100,6 @@ async def send_html_graph(message: Message):
     # Генерация графика
     file_path = graf_mobile(dollar_data)
 
-
     # Создаем кнопку для Web App
     button_mobile = InlineKeyboardButton(
         text="График на телефоне",  # Текст на кнопке
@@ -94,9 +107,8 @@ async def send_html_graph(message: Message):
     )
     button_pc = InlineKeyboardButton(
         text="График на ПК",  # Текст на кнопке
-        callback_data= graf_not_mobile(dollar_data)
+        callback_data=graf_not_mobile(dollar_data)
     )
-
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[button_mobile], [button_pc]]
@@ -120,6 +132,61 @@ async def process_help_command(message: Message):
     await message.answer(
         'Тут пока ничего нет'
     )
+
+
+@router.message(Command(commands=['user_remind']))
+async def process_user_remind(message: Message, state: FSMContext):
+    """Шаг 1: Запрос текста напоминания."""
+    logger.info(f"Пользователь {message.from_user.id} вызвал /user_remind")
+
+    await message.answer("📌 Введите текст напоминания:")
+    await state.set_state(ReminderState.waiting_for_text)
+
+@router.message(ReminderState.waiting_for_text)
+async def process_reminder_text(message: Message, state: FSMContext):
+    """Шаг 2: Сохраняем текст и запрашиваем время."""
+    reminder_text = message.text
+    logger.info(f"Пользователь {message.from_user.id} ввёл текст: {reminder_text}")
+
+    await state.update_data(reminder_text=reminder_text)
+    await message.answer("⏳ Через сколько минут отправить напоминание?")
+    await state.set_state(ReminderState.waiting_for_minutes)
+
+@router.message(ReminderState.waiting_for_minutes)
+async def process_reminder_time(message: Message, state: FSMContext):
+    """Шаг 3: Сохраняем время и создаём задачу."""
+    if not message.text.isdigit():
+        await message.answer("❌ Введите число минут цифрами!")
+        return
+
+    minutes = int(message.text)
+    min_word = get_minutes_word(minutes)  # Получаем правильное склонение
+
+    data = await state.get_data()
+    reminder_text = data.get("reminder_text", "Напоминание")
+
+    user_id = message.from_user.id
+    logger.info(f"Пользователь {user_id} установил напоминание '{reminder_text}' через {minutes} {min_word}.")
+
+    # Добавляем задачу в планировщик
+    schedule_interval_user(user_id, reminder_text, minutes, scheduler)
+
+    await message.answer(f"✅ Напоминание '{reminder_text}' запланировано через {minutes} {min_word}!")
+    await state.clear()
+
+def get_minutes_word(minutes: int) -> str:
+    """Определяет правильное склонение слова 'минута'."""
+    if 11 <= minutes % 100 <= 14:
+        return "минут"
+
+    last_digit = minutes % 10
+    if last_digit == 1:
+        return "минуту"
+    elif last_digit in [2, 3, 4]:
+        return "минуты"
+    if minutes == 11 or 12 <= minutes <= 20:
+        return "минут"
+
 
 
 # Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
@@ -149,12 +216,12 @@ async def process_help_command(message: Message):
 # Обработчик нажатий на инлайн-кнопки
 @router.callback_query(lambda c: c.data == 'start_1')
 async def process_start_1_button(callback: CallbackQuery):
-    await callback.answer(cache_time=60) # Ответ пользователю
+    await callback.answer(cache_time=60)  # Ответ пользователю
     try:
         # Выполняем действие для start_1 кнопки
-        result = course_today() # Пример: вызываем функцию из service.CbRF
+        result = course_today()  # Пример: вызываем функцию из service.CbRF
 
-        #Форматируем результат для отображения
+        # Форматируем результат для отображения
         output_text = result
 
         await callback.message.edit_text(  # Изменяем текст сообщения
@@ -165,4 +232,3 @@ async def process_start_1_button(callback: CallbackQuery):
         await callback.message.edit_text(  # Обработка ошибок
             text=f"Ошибка: {e}"
         )
-
