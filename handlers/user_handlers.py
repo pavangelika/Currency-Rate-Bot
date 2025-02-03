@@ -44,16 +44,6 @@ async def process_start_handler(message: Message):
     await save_user_data(message)
 
 
-@router.message(Command(commands=["select_rate"]))
-async def select_rate_handler(message: Message):
-    try:
-        keyboard = create_inline_kb(1, **CURRENCY)
-        await message.answer(text = 'Выбери меня', reply_markup=keyboard)
-    except Exception as e:
-        logger.error(e)
-
-
-
 @router.message(Command(commands=["today"]))
 async def send_today_handler(message: Message):
     try:
