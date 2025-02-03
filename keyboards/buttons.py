@@ -8,6 +8,7 @@ from lexicon.lexicon import LEXICON_BTN
 def create_inline_kb(width: int,
                      *args: str,
                      **kwargs: str) -> InlineKeyboardMarkup:
+    """ Функция для генерации инлайн-клавиатур <на лету>"""
     # Инициализируем билдер
     kb_builder = InlineKeyboardBuilder()
     # Инициализируем список для кнопок

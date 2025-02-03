@@ -8,7 +8,7 @@ from config_data import config
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe, \
     schedule_interval_user
 from keyboards.buttons import create_inline_kb
-from lexicon.lexicon import LEXICON_TEXT, LEXICON_NOTIFICATION_SEND
+from lexicon.lexicon import LEXICON_TEXT, LEXICON_NOTIFICATION_SEND, create_buttons_from_json_file, CURRENCY
 from logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_mobile, graf_not_mobile
@@ -42,6 +42,16 @@ async def process_start_handler(message: Message):
         text=LEXICON_TEXT['start'],
         reply_markup=keyboard)
     await save_user_data(message)
+
+
+@router.message(Command(commands=["select_rate"]))
+async def select_rate_handler(message: Message):
+    try:
+        keyboard = create_inline_kb(1, **CURRENCY)
+        await message.answer(text = 'Выбери меня', reply_markup=keyboard)
+    except Exception as e:
+        logger.error(e)
+
 
 
 @router.message(Command(commands=["today"]))
