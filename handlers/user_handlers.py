@@ -33,16 +33,6 @@ def set_scheduler(sched):
     scheduler = sched
 
 
-# Этот хэндлер будет срабатывать на команду "/start"
-@router.message(Command(commands=["start"]))
-async def process_start_handler(message: Message):
-    # keyboard = create_inline_kb(1, **LEXICON_BTN)
-    keyboard = create_inline_kb(1, 'start_1')
-    await message.answer(
-        text=LEXICON_TEXT['start'],
-        reply_markup=keyboard)
-    await save_user_data(message)
-
 
 @router.message(Command(commands=["today"]))
 async def send_today_handler(message: Message):
@@ -214,21 +204,4 @@ def get_minutes_word(minutes: int) -> str:
 #     await message.reply(text='Вы прислали видео')
 
 # Обработчик нажатий на инлайн-кнопки
-@router.callback_query(lambda c: c.data == 'start_1')
-async def process_start_1_button(callback: CallbackQuery):
-    await callback.answer(cache_time=60)  # Ответ пользователю
-    try:
-        # Выполняем действие для start_1 кнопки
-        result = course_today()  # Пример: вызываем функцию из service.CbRF
 
-        # Форматируем результат для отображения
-        output_text = result
-
-        await callback.message.edit_text(  # Изменяем текст сообщения
-            text=output_text,
-            reply_markup=None  # Удаляем клавиатуру после нажатия
-        )
-    except Exception as e:
-        await callback.message.edit_text(  # Обработка ошибок
-            text=f"Ошибка: {e}"
-        )

@@ -78,7 +78,7 @@ def keyboard_with_pagination_and_selection(width: int,
             text = f"✅ {text}"
         buttons.append(InlineKeyboardButton(
             text=text,
-            callback_data=f"toggle_{button}"  # Добавляем префикс для обработки
+            callback_data=f"toggle_{button}_{page}"  # Добавляем префикс для обработки
         ))
 
     # Добавляем кнопки пагинации
