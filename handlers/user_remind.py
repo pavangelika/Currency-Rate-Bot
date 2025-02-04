@@ -8,7 +8,7 @@ from config_data import config
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe, \
     schedule_interval_user
 from keyboards.buttons import create_inline_kb
-from lexicon.lexicon import LEXICON_TEXT, LEXICON_NOTIFICATION_SEND, create_buttons_from_json_file, CURRENCY
+from lexicon.lexicon import LEXICON_NOTIFICATION_SEND, create_buttons_from_json_file, CURRENCY
 from logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_mobile, graf_not_mobile
