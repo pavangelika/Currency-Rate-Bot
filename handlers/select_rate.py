@@ -37,11 +37,10 @@ async def process_start_handler(message: Message):
     keyboard = create_inline_kb(1, 'start_1')
     await message.answer(
         text=LEXICON_TEXT['start'],
-        reply_markup=keyboard,
-        callback = "start")
+        reply_markup=keyboard)
     await save_user_data(message)
 
-@router.callback_query(F.data.startswith("start"))
+@router.callback_query(lambda c: c.data =='start_1')
 async def handle_toggle(callback: CallbackQuery):
     try:
         keyboard = keyboard_with_pagination_and_selection(

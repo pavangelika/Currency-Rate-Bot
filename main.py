@@ -5,7 +5,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from config_data import config
 
-from handlers import user_handlers, select_rate
+from handlers import user_handlers, select_rate, user_remind
 from keyboards.menu import set_main_menu
 from logging_settings import logger
 from service.CbRF import currency
@@ -26,9 +26,11 @@ async def main():
     # Регистрируем роутеры в диспетчере
     dp.include_router(user_handlers.router)
     dp.include_router(select_rate.router)
+    dp.include_router(user_remind.router)
 
     # Передаем планировщик в обработчики
     user_handlers.set_scheduler(scheduler)
+    user_remind.set_scheduler(scheduler)
 
     # Настраиваем логирование
     logger.info('Starting bot')
