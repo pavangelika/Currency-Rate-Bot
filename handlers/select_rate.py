@@ -55,6 +55,7 @@ async def handle_toggle(callback: CallbackQuery):
             last_btn="✅ Сохранить",
             page=1,  # Можно передать текущую страницу
         )
+        await callback.answer('')
         await callback.message.answer("Выберите одну или несколько валют для получения актуальных данных по валютному курсу:",
                              reply_markup=keyboard)
     except Exception as e:
@@ -107,6 +108,7 @@ async def handle_toggle(callback: CallbackQuery):
         page=current_page,  # Можно передать текущую страницу
         selected_buttons=selected_buttons
     )
+    await callback.answer('')
     await callback.message.edit_reply_markup(reply_markup=new_keyboard)
 
 @router.callback_query(F.data.startswith("page_"))
@@ -121,6 +123,7 @@ async def handle_pagination(callback: CallbackQuery):
         selected_buttons=selected_buttons
     )
     # Редактируем сообщение с новой клавиатурой
+    await callback.answer('')
     await callback.message.edit_reply_markup(reply_markup=new_keyboard)
 
 @router.callback_query(F.data == "last_btn")
@@ -129,10 +132,14 @@ async def handle_last_btn(callback: CallbackQuery):
     select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == "/select_rate"), None)
     # Возвращаем список выбранных кнопок
     if len(selected_buttons) == 0:
-        await callback.answer(select_rate_data["notification_false"], show_alert=True)
+        # await callback.answer(select_rate_data["notification_false"], show_alert=True)
+        await callback.answer('')
+        await callback.message.answer(select_rate_data["notification_false"])
         await update_user_data_new(user_id, "selected_currency", False)
     else:
         logger.info(f'Пользователь {user_id} выбрал валюту {selected_names}')
-        await callback.answer(f"{select_rate_data["notification_true"]} \n  {'\n '.join(selected_names)}", show_alert=True)
+        # await callback.answer(f"{select_rate_data["notification_true"]} \n  {'\n '.join(selected_names)}", show_alert=True)
+        await callback.answer('')
+        await callback.message.answer(f"{select_rate_data["notification_true"]} \n  {'\n '.join(selected_names)}")
         await update_user_data_new(user_id, "selected_currency", selected_names)
 
