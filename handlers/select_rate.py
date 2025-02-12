@@ -3,7 +3,9 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
+from aiogram.utils import keyboard
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
@@ -162,7 +164,35 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         logger.info(f'Пользователь {user_id} выбрал валюту {selected_names}')
         await callback.answer('')
         await callback.message.answer(f"{select_rate_data['notification_true']} \n  {'\n '.join(selected_names)}")
-        await update_user_data_new(user_id, "selected_currency", selected_names)
 
-    logger.info(f'user_data[user_id] {user_data[user_id]}')
+        # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+
+        # Добавляем кнопки
+        buttons_to_add = [
+            {"command": "today", "btn": "Курс ЦБ сегодня"},
+            {"command": "everyday", "btn1": "Подписаться на ежедневную рассылку курса", "btn2": "Отписаться от ежедневной рассылки курса"},
+            {"command": "exchange_rate", "btn1": "Подписаться на рассылку об изменении курса", "btn2": "Отписаться от рассылки об изменении курса"},
+            {"command": "chart", "btn": "Посмотреть график"},
+            {"command": "in_banks", "btn": "Курс валют в банках"},
+        ]
+
+        for button_data in buttons_to_add:
+            item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
+            if item:
+                if item["command"] in ["everyday", "exchange_rate"]:
+                    # Проверяем значения в user_state
+                    user_data_item = user_state.get(item["command"], False)  # По умолчанию False (не подписан)
+                    btn_key = "btn2" if user_data_item else "btn1"  # Выбираем кнопку в зависимости от состояния
+                    btn_text = item.get(btn_key, button_data.get(btn_key))
+                else:
+                    btn_text = item.get("btn", button_data.get("btn"))
+
+                if btn_text:
+                    keyboard.inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
+
+        # Отправляем сообщение с клавиатурой
+        await callback.message.answer("Выберите действие:", reply_markup=keyboard)
+
+
     logger.info(f'user_data {user_data}')

@@ -65,9 +65,7 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
     {
         "command" : "today",
         "name": "Курс ЦБ сегодня",
-        "btn": "Курс ЦБ сегодня",
-        "notification_true": "",
-        "notification_false": ""
+        "btn": "Курс ЦБ сегодня"
     },
     {
         "command" : "everyday",
@@ -102,7 +100,7 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
     },
     {
         "command" : "in_banks",
-        "name": "Курс валют в банках",
+        "name": "Курс валют в банках моего города",
         "btn1": "Ввести гео",
         "btn2": "Показать банки",
         "notification_true": "",

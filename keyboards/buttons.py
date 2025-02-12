@@ -6,6 +6,8 @@ from logging_settings import logger
 from lexicon.lexicon import LEXICON_BTN
 
 
+
+
 def create_inline_kb(width: int,
                      *args: str,
                      **kwargs: str) -> InlineKeyboardMarkup:
