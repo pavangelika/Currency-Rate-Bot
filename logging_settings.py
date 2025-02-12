@@ -1,48 +1,60 @@
 import logging
 import os
+from typing import Optional
 
-def setup_logging(log_file="log/mylog.log", log_level=logging.INFO):
+def create_handler(handler_class, level: int, formatter: logging.Formatter, filename: Optional[str] = None, mode: str = 'a', encoding: str = 'utf-8', filters=None):
+    """
+    Создает и настраивает обработчик для логирования.
+
+    :param handler_class: Класс обработчика (например, logging.StreamHandler или logging.FileHandler).
+    :param level: Уровень логирования.
+    :param formatter: Форматтер для обработчика.
+    :param filename: Имя файла (для FileHandler).
+    :param mode: Режим открытия файла (для FileHandler).
+    :param encoding: Кодировка файла (для FileHandler).
+    :param filters: Список фильтров для обработчика.
+    :return: Настроенный обработчик.
+    """
+    if handler_class == logging.FileHandler:
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))  # Создаем директорию, если ее нет
+        handler = handler_class(filename, mode, encoding)
+    else:
+        handler = handler_class()
+
+    handler.setLevel(level)
+    handler.setFormatter(formatter)
+    if filters:
+        for filter in filters:
+            handler.addFilter(filter)
+    return handler
+
+def setup_logging(log_file: str = "log/mylog.log", error_log_file: str = "log/error.log", log_level: int = logging.INFO):
     """Настраивает логирование с выводом в консоль и записью в файл."""
+
+    # Базовый форматтер
+    log_formatter = logging.Formatter(
+        '[%(asctime)s] #%(levelname)-8s %(filename)s:%(lineno)d - %(message)s'
+    )
 
     # Создаем логгер
     logger = logging.getLogger(__name__)
     logger.setLevel(log_level)
 
-    # Создаем обработчик для вывода в консоль
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(log_level)
-    console_formatter = logging.Formatter('[%(asctime)s] #%(levelname)-8s %(filename)s:'
-        '%(lineno)d - %(message)s')
-    console_handler.setFormatter(console_formatter)
+    # Обработчик для консоли
+    console_handler = create_handler(logging.StreamHandler, log_level, log_formatter)
     logger.addHandler(console_handler)
 
-    # Создаем обработчик для записи в файл
-    if not os.path.exists(os.path.dirname(log_file)):
-        os.makedirs(os.path.dirname(log_file))  # Создаем директорию, если ее нет
-
-    file_handler = logging.FileHandler(log_file, 'w', encoding='utf-8')
-    file_handler.setLevel(log_level)
-    file_formatter = logging.Formatter(
-        '[%(asctime)s] #%(levelname)-8s %(filename)s:'
-        '%(lineno)d - %(message)s')
-    file_handler.setFormatter(file_formatter)
+    # Обработчик для основного файла логирования
+    file_handler = create_handler(logging.FileHandler, log_level, log_formatter, log_file, 'w')
     logger.addHandler(file_handler)
 
-    class ErrorLogFilter(logging.Filter):
-        def filter(self, record):
-            return record.levelname == 'ERROR'
-
-    formatter_1 = logging.Formatter(
-        fmt='[%(asctime)s] #%(levelname)-8s %(filename)s:'
-            '%(lineno)d - %(message)s'
-    )
-
-    error_file = logging.FileHandler('log/error.log', 'a', encoding='utf-8')
-    error_file.setLevel(logging.DEBUG)
-    error_file.addFilter(ErrorLogFilter())
-    error_file.setFormatter(formatter_1)
-    logger.addHandler(error_file)
+    # Обработчик для файла ошибок
+    error_filter = lambda record: record.levelno == logging.ERROR  # Фильтр для ошибок
+    error_handler = create_handler(logging.FileHandler, logging.ERROR, log_formatter, error_log_file, filters=[error_filter])
+    logger.addHandler(error_handler)
 
     return logger
 
+# Инициализация логгера
 logger = setup_logging()
