@@ -38,7 +38,7 @@ def get_lexicon_data(command: str):
 @router.message(Command(commands=START_COMMAND))
 async def process_start_handler(message: Message):
     """Обработчик команды /start."""
-    start_data = next((item for item in LEXICON_GLOBAL if item["command"] == START_COMMAND), None)
+    start_data = get_lexicon_data(START_COMMAND)
     if start_data:
         keyboard = create_inline_kb(1, start_data["btn"])
         await message.answer(text=start_data["text"], reply_markup=keyboard)
@@ -47,9 +47,7 @@ async def process_start_handler(message: Message):
         await message.answer("Ошибка: данные для команды /start не найдены.")
 
 
-@router.callback_query(
-    lambda c: c.data == next((item["btn"] for item in LEXICON_GLOBAL if item["command"] == START_COMMAND), None))
-# @router.callback_query(lambda c: c.data == get_lexicon_data(START_COMMAND)["btn"])
+@router.callback_query(lambda c: c.data == get_lexicon_data(START_COMMAND)["btn"])
 async def handle_start_callback(callback: CallbackQuery, state: FSMContext):
     """Обработчик callback для команды /start."""
     try:
