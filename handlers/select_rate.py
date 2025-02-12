@@ -1,22 +1,15 @@
 # select_rate.py
-import json
-from aiogram import Router, types, F
+from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-from config_data import config
-
-from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe, \
-    schedule_interval_user
-from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
-from lexicon.lexicon import LEXICON_NOTIFICATION_SEND, create_buttons_from_json_file, CURRENCY, \
-    LEXICON_GLOBAL
-from logging_settings import logger
-from save_files.user_storage import save_user_data, update_user_data, user_data, update_user_data_new
-from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_mobile, graf_not_mobile
-
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
+from aiogram.types import Message, CallbackQuery
 
+from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
+from lexicon.lexicon import CURRENCY, \
+    LEXICON_GLOBAL
+from logging_settings import logger
+from save_files.user_storage import save_user_data, update_user_data_new, user_data
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -28,14 +21,17 @@ TOGGLE_PREFIX = "toggle_"
 PAGE_PREFIX = "page_"
 LAST_BTN = "last_btn"
 
+
 # Состояния FSM
 class UserState(StatesGroup):
     selected_buttons = State()  # Состояние для хранения выбранных кнопок
-    selected_names = State()   # Состояние для хранения выбранных названий
+    selected_names = State()  # Состояние для хранения выбранных названий
+
 
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
     return next((item for item in LEXICON_GLOBAL if item["command"] == command), None)
+
 
 @router.message(Command(commands=START_COMMAND))
 async def process_start_handler(message: Message):
@@ -49,7 +45,8 @@ async def process_start_handler(message: Message):
         await message.answer("Ошибка: данные для команды /start не найдены.")
 
 
-@router.callback_query(lambda c: c.data == next((item["btn"] for item in LEXICON_GLOBAL if item["command"] == START_COMMAND), None))
+@router.callback_query(
+    lambda c: c.data == next((item["btn"] for item in LEXICON_GLOBAL if item["command"] == START_COMMAND), None))
 # @router.callback_query(lambda c: c.data == get_lexicon_data(START_COMMAND)["btn"])
 async def handle_start_callback(callback: CallbackQuery, state: FSMContext):
     """Обработчик callback для команды /start."""
@@ -62,7 +59,7 @@ async def handle_start_callback(callback: CallbackQuery, state: FSMContext):
             **CURRENCY,
             last_btn="✅ Сохранить",
             page=1,
-            selected_buttons = set()  # Начинаем с пустого набора
+            selected_buttons=set()  # Начинаем с пустого набора
         )
         await callback.answer('')
         await callback.message.answer(
@@ -71,6 +68,7 @@ async def handle_start_callback(callback: CallbackQuery, state: FSMContext):
         )
     except Exception as e:
         logger.error(e)
+
 
 @router.message(Command(commands=SELECT_RATE_COMMAND))
 async def select_rate_handler(message: Message, state: FSMContext):
@@ -84,7 +82,7 @@ async def select_rate_handler(message: Message, state: FSMContext):
             **CURRENCY,
             last_btn="✅ Сохранить",
             page=1,
-            selected_buttons=set() # Начинаем с пустого набора
+            selected_buttons=set()  # Начинаем с пустого набора
         )
         await message.answer(
             "Выберите одну или несколько валют для получения актуальных данных по валютному курсу:",
@@ -92,6 +90,7 @@ async def select_rate_handler(message: Message, state: FSMContext):
         )
     except Exception as e:
         logger.error(e)
+
 
 @router.callback_query(F.data.startswith(TOGGLE_PREFIX) | F.data.startswith(PAGE_PREFIX))
 async def handle_toggle_and_pagination(callback: CallbackQuery, state: FSMContext):
@@ -143,6 +142,7 @@ async def handle_toggle_and_pagination(callback: CallbackQuery, state: FSMContex
     except Exception as e:
         logger.error(e)
 
+
 @router.callback_query(F.data == LAST_BTN)
 async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
     """Обработчик последней кнопки."""
@@ -150,9 +150,9 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
     select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == SELECT_RATE_COMMAND), None)
 
     # Получаем текущее состояние
-    user_data = await state.get_data()
-    selected_buttons = user_data.get("selected_buttons", set())
-    selected_names = user_data.get("selected_names", set())
+    user_state = await state.get_data()
+    selected_buttons = user_state.get("selected_buttons", set())
+    selected_names = user_state.get("selected_names", set())
 
     if not selected_buttons:
         await callback.answer('')
@@ -164,3 +164,5 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(f"{select_rate_data['notification_true']} \n  {'\n '.join(selected_names)}")
         await update_user_data_new(user_id, "selected_currency", selected_names)
 
+    logger.info(f'user_data[user_id] {user_data[user_id]}')
+    logger.info(f'user_data {user_data}')

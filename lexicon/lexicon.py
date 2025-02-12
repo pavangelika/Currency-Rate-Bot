@@ -63,14 +63,14 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
         "notification_false": "Вы не выбрали валюту!"
     },
     {
-        "command" : "/today",
-        "name": "Курс сегодня",
-        "btn": "Курс сегодня",
+        "command" : "today",
+        "name": "Курс ЦБ сегодня",
+        "btn": "Курс ЦБ сегодня",
         "notification_true": "",
         "notification_false": ""
     },
     {
-        "command" : "/everyday",
+        "command" : "everyday",
         "name": "Подписаться/Отписаться на ежедневную рассылку курса",
         "btn1": "Подписаться на ежедневную рассылку курса",
         "btn2": "Отписаться от ежедневной рассылки курса",
@@ -78,7 +78,7 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
         "notification_false": "Вы отписались от ежедневной рассылки курса"
     },
     {
-        "command" : "/exchange_rate",
+        "command" : "exchange_rate",
         "name": "Подписаться/Отписаться на рассылку об изменении курса",
         "btn1": "Подписаться на рассылку об изменении курса",
         "btn2": "Отписаться от рассылки об изменении курса",
@@ -86,7 +86,7 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
         "notification_false": "Вы отписались от рассылки об изменении курса валют"
     },
     {
-        "command" : "/chart",
+        "command" : "chart",
         "name": "Посмотреть график",
         "btn1": "График на телефоне",
         "btn2": "График на ПК",
@@ -94,14 +94,14 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
         "notification_false": ""
     },
     {
-        "command" : "/converter",
+        "command" : "converter",
         "name": "Конвертер валют",
         "btn": "Конвертер валют",
         "notification_true": "",
         "notification_false": ""
     },
     {
-        "command" : "/in_banks",
+        "command" : "in_banks",
         "name": "Курс валют в банках",
         "btn1": "Ввести гео",
         "btn2": "Показать банки",
@@ -109,7 +109,7 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
         "notification_false": ""
     },
     {
-        "command" : "/user_remind",
+        "command" : "user_remind",
         "name": "Напоминание о чем-то через заданный интервал времени",
         "btn1": "Отписаться от ежедневной рассылки ",
         "btn2": "Отписаться от рассылки изменений",
@@ -117,7 +117,7 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
         "notification_false": ""
     },
     {
-        "command" : "/unsubscribe",
+        "command" : "unsubscribe",
         "name": "Отписаться",
         "btn1": "",
         "btn2": "",
