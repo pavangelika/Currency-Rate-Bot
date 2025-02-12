@@ -28,6 +28,7 @@ LAST_BTN = "last_btn"
 class UserState(StatesGroup):
     selected_buttons = State()  # Состояние для хранения выбранных кнопок
     selected_names = State()  # Состояние для хранения выбранных названий
+    everyday = State()
 
 
 def get_lexicon_data(command: str):
@@ -36,7 +37,7 @@ def get_lexicon_data(command: str):
 
 
 @router.message(Command(commands=START_COMMAND))
-async def process_start_handler(message: Message):
+async def process_start_handler(message: Message, state: FSMContext):
     """Обработчик команды /start."""
     start_data = get_lexicon_data(START_COMMAND)
     if start_data:
@@ -47,13 +48,20 @@ async def process_start_handler(message: Message):
         await message.answer("Ошибка: данные для команды /start не найдены.")
 
 
+
 @router.callback_query(lambda c: c.data == get_lexicon_data(START_COMMAND)["btn"])
-async def handle_start_callback(callback: CallbackQuery, state: FSMContext):
-    """Обработчик callback для команды /start."""
+@router.callback_query(lambda c: c.data == get_lexicon_data("select_rate")["command"])
+@router.message(Command(commands=[SELECT_RATE_COMMAND]))
+async def handle_currency_selection(event: Message | CallbackQuery, state: FSMContext):
+    """
+    Обработчик для выбора валюты.
+    Поддерживает как команду /select_rate, так и callback от кнопки "Выбор валюты".
+    """
     try:
         # Инициализируем состояние
         await state.update_data(selected_buttons=set(), selected_names=set())
 
+        # Создаем клавиатуру
         keyboard = keyboard_with_pagination_and_selection(
             width=1,
             **CURRENCY,
@@ -61,33 +69,15 @@ async def handle_start_callback(callback: CallbackQuery, state: FSMContext):
             page=1,
             selected_buttons=set()  # Начинаем с пустого набора
         )
-        await callback.answer('')
-        await callback.message.answer(
-            "Выберите одну или несколько валют для получения актуальных данных по валютному курсу:",
-            reply_markup=keyboard
-        )
-    except Exception as e:
-        logger.error(e)
 
+        # Отправляем сообщение с клавиатурой
+        text = "Выберите одну или несколько валют для получения актуальных данных по валютному курсу:"
+        if isinstance(event, CallbackQuery):
+            await event.answer('')
+            await event.message.answer(text, reply_markup=keyboard)
+        else:  # isinstance(event, Message)
+            await event.answer(text, reply_markup=keyboard)
 
-@router.message(Command(commands=SELECT_RATE_COMMAND))
-async def select_rate_handler(message: Message, state: FSMContext):
-    """Обработчик команды /select_rate."""
-    try:
-        # Инициализируем состояние
-        await state.update_data(selected_buttons=set(), selected_names=set())
-
-        keyboard = keyboard_with_pagination_and_selection(
-            width=1,
-            **CURRENCY,
-            last_btn="✅ Сохранить",
-            page=1,
-            selected_buttons=set()  # Начинаем с пустого набора
-        )
-        await message.answer(
-            "Выберите одну или несколько валют для получения актуальных данных по валютному курсу:",
-            reply_markup=keyboard
-        )
     except Exception as e:
         logger.error(e)
 
@@ -160,14 +150,16 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         await update_user_data_new(user_id, "selected_currency", False)
     else:
         logger.info(f'Пользователь {user_id} выбрал валюту {selected_names}')
+        await update_user_data_new(user_id, "selected_currency", selected_names)
         await callback.answer('')
-        await callback.message.answer(f"{select_rate_data['notification_true']} \n  {'\n '.join(selected_names)}")
+        # await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}")
 
         # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
         keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
         # Добавляем кнопки
         buttons_to_add = [
+            {"command": "select_rate", "btn": "Изменить валюту"},
             {"command": "today", "btn": "Курс ЦБ сегодня"},
             {"command": "everyday", "btn1": "Подписаться на ежедневную рассылку курса", "btn2": "Отписаться от ежедневной рассылки курса"},
             {"command": "exchange_rate", "btn1": "Подписаться на рассылку об изменении курса", "btn2": "Отписаться от рассылки об изменении курса"},
@@ -190,7 +182,21 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
                     keyboard.inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
 
         # Отправляем сообщение с клавиатурой
-        await callback.message.answer("Выберите действие:", reply_markup=keyboard)
+                # await callback.message.answer("Выберите действие:", reply_markup=keyboard)
+
+        await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}", reply_markup=keyboard)
 
 
     logger.info(f'user_data {user_data}')
+
+# @router.message(Command(commands=["today"]))
+# async def send_today_handler(message: Message):
+#     try:
+#         user_id = message.from_user.id
+#         await message.answer(user_data[user_id]["selected_currency"])
+#         # await message.answer(course_today())
+#     except Exception as e:
+#         logger.error(e)
+
+
+

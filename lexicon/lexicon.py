@@ -59,7 +59,7 @@ LEXICON_GLOBAL: list[dict[str,str]]= [
         "command" : "select_rate",
         "name": "Изменить валюту",
         "btn": "Изменить валюту",
-        "notification_true": "Вы выбрали:",
+        "notification_true": "Выбранная валюта:",
         "notification_false": "Вы не выбрали валюту!"
     },
     {
