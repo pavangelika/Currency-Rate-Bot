@@ -2,10 +2,9 @@
 
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from logging_settings import logger
+from logger.logging_settings import logger
 from aiogram import Bot
 from config_data import config
-from aiogram.types import Message
 
 from service.CbRF import course_today
 

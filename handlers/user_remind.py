@@ -1,17 +1,11 @@
 # user_handlers.py
 
-from aiogram import Router, types
+from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-from config_data import config
+from aiogram.types import Message
 
-from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe, \
-    schedule_interval_user
-from keyboards.buttons import create_inline_kb
-from lexicon.lexicon import LEXICON_NOTIFICATION_SEND, create_buttons_from_json_file, CURRENCY
-from logging_settings import logger
-from save_files.user_storage import save_user_data, update_user_data, user_data
-from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_mobile, graf_not_mobile
+from handlers.notifications import schedule_interval_user
+from logger.logging_settings import logger
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State

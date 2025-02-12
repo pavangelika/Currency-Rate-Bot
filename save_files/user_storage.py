@@ -1,6 +1,6 @@
 from aiogram.types import Message
 
-from logging_settings import logger
+from logger.logging_settings import logger
 
 user_data = {}  # Глобальный словарь для хранения данных пользователей
 

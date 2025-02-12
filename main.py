@@ -7,7 +7,7 @@ from config_data import config
 
 from handlers import user_handlers, select_rate, user_remind
 from keyboards.menu import set_main_menu
-from logging_settings import logger
+from logger.logging_settings import logger
 from service.CbRF import currency
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 

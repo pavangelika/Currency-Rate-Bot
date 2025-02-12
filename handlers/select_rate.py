@@ -1,17 +1,20 @@
 # select_rate.py
+import json
+import os
+
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
-from aiogram.utils import keyboard
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
+from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
     LEXICON_GLOBAL
-from logging_settings import logger
+from logger.logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data_new, user_data
+from service.CbRF import course_today
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -28,13 +31,10 @@ LAST_BTN = "last_btn"
 class UserState(StatesGroup):
     selected_buttons = State()  # Состояние для хранения выбранных кнопок
     selected_names = State()  # Состояние для хранения выбранных названий
-    everyday = State()
-
 
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
     return next((item for item in LEXICON_GLOBAL if item["command"] == command), None)
-
 
 @router.message(Command(commands=START_COMMAND))
 async def process_start_handler(message: Message, state: FSMContext):
@@ -186,17 +186,29 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
 
         await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}", reply_markup=keyboard)
 
+        # Путь к файлу (можно использовать абсолютный путь)
+        currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
+        # Загрузка данных о валютах
+        currency_data = load_currency_data(currency_file_path)
+        update_selected_currency(user_data, user_id, currency_data)
 
-    logger.info(f'user_data {user_data}')
+        logger.info(f'user_data {user_data}')
 
-# @router.message(Command(commands=["today"]))
-# async def send_today_handler(message: Message):
-#     try:
-#         user_id = message.from_user.id
-#         await message.answer(user_data[user_id]["selected_currency"])
-#         # await message.answer(course_today())
-#     except Exception as e:
-#         logger.error(e)
-
-
+@router.message(Command(commands=["today"]))
+@router.callback_query(lambda c: c.data == get_lexicon_data("today")["command"])
+async def send_today_handler(event: Message | CallbackQuery):
+    """
+    Обработчик для вывода курса выбранных валют пользователем для текущего дня.
+    Поддерживает как команду /today, так и callback от кнопки "Курс ЦБ сегодня".
+    """
+    try:
+        user_id = event.from_user.id
+        selected_data = user_data[user_id]["selected_currency"]
+        if isinstance(event, CallbackQuery):
+            await event.answer('')
+            await event.message.answer(course_today(selected_data))
+        else:  # isinstance(event, Message)
+            await event.answer(course_today(selected_data))
+    except Exception as e:
+        logger.error(e)
 

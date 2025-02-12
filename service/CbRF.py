@@ -7,7 +7,33 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 
-from logging_settings import logger
+from logger.logging_settings import logger
+
+def compare_dates(today_str, date_str):
+  """
+  Сравнивает две даты в формате строки.
+
+  Args:
+      today_str: Строка с текущей датой в формате "ДД/ММ/ГГГГ".
+      date_str: Строка с датой из XML в формате "ДД.ММ.ГГГГ".
+
+  Returns:
+      "today" - если даты совпадают.
+      "tomorrow" - если today_str на один день меньше date_str.
+      "error" - в противном случае.
+  """
+
+  try:
+    today = datetime.datetime.strptime(today_str, "%d/%m/%Y").date()
+    date = datetime.datetime.strptime(date_str, "%d.%m.%Y").date()
+
+    if today == date:
+      return "today"
+    elif today == date - datetime.timedelta(days=1):
+      return "tomorrow"
+  except ValueError:
+    return "error"  # Ошибка при неверном формате даты
+
 
 
 def currency():
@@ -19,10 +45,10 @@ def currency():
     currencies = []
 
     for valute in root.findall('Valute'):
-        numCode = valute.find('NumCode').text
+        currency_id = valute.get("ID")  # Изменено имя переменной
         name = valute.find('Name').text
         charCode = valute.find('CharCode').text
-        currencies.append({"id": numCode, "name": name, "charCode": charCode})
+        currencies.append({"id": currency_id, "name": name, "charCode": charCode})
 
     try:
         logger.info('Success. Exchange rate codes saved to file: "currency_code.json"')
@@ -34,24 +60,49 @@ def currency():
     return currencies
 
 
-def course_today():
+def course_today(selected_data):
     try:
         today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
         url = f"https://www.cbr.ru/scripts/XML_daily.asp?date_req={today}"
-        target_ids = ['R01235', 'R01239']  # Список нужных ID
+        target_ids = []  # Список нужных ID
         response = requests.get(url)
         xml_data = response.content
         root = ET.fromstring(xml_data)
-        save_file(xml_data, "course_today")
-        result_string = f"{today}\n"  # Дата на первой строке
 
-        for valute in root.findall('Valute'):
-            if valute.get('ID') in target_ids:
-                name = valute.find('Name').text
-                value = valute.find('Value').text
-                result_string += f"{name} = {value}\n"  # Курс на новой строке
+        # save_file(xml_data, "course_today")
+
+        for i in selected_data:
+            target_ids.append(i['id'])
+
+        date = root.get('Date')
+
+        result_string = f"{today}\n"  # Дата на первой строке
+        result_info = f"Курс {date}: "
+
+        what_day = compare_dates(today, date)
+        if what_day == "today":
+            for valute in root.findall('Valute'):
+                if valute.get('ID') in target_ids:
+                    name = valute.find('Name').text
+                    value = valute.find('Value').text
+                    value = value.replace(',', '.')
+                    nominal = valute.find('Nominal').text
+                    result = float(value) / float(nominal)
+                    result_string += f"{name} = {result}\n"
+                    result_info += f"{name} = {result} "
+            logger.info(result_info)
+        if what_day == "tomorrow":
+            for valute in root.findall('Valute'):
+                if valute.get('ID') in target_ids:
+                    name = valute.find('Name').text
+                    value = valute.find('Value').text
+                    value = value.replace(',', '.')
+                    nominal = valute.find('Nominal').text
+                    result = float(value) / float(nominal)
+                    result_string += f"{name} = {result}\n"
+                    result_info += f"{name} = {result} "
+            logger.info(result_info)
         return result_string.strip()  # Удаляем конечный символ новой строки
-        logger.info(f'Success. Received exchange rate for {today}')
     except Exception as e:
         logger.exception(e)
 

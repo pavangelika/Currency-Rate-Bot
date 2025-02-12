@@ -18,8 +18,6 @@ def create_buttons_from_json_file(file_path):
     return CURRENCY
 
 CURRENCY = create_buttons_from_json_file(file_path)
-print(CURRENCY)
-
 
 LEXICON_NOTIFICATION_SEND: dict[str, str] = {
     'everyday_true': 'Вы подписаны на ежедневную рассылку курса валют',
