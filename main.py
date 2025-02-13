@@ -25,12 +25,12 @@ async def main():
 
     # Регистрируем роутеры в диспетчере
     dp.include_router(user_handlers.router)
-    dp.include_router(select_rate.router)
     dp.include_router(user_remind.router)
+    dp.include_router(select_rate.router)
 
     # Передаем планировщик в обработчики
-    user_handlers.set_scheduler(scheduler)
     user_remind.set_scheduler(scheduler)
+    select_rate.set_scheduler(scheduler)
 
     # Настраиваем логирование
     logger.info('Starting bot')

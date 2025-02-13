@@ -9,92 +9,34 @@ from handlers.notifications import schedule_daily_greeting, schedule_interval_gr
 from lexicon.lexicon import  LEXICON_NOTIFICATION_SEND
 from logger.logging_settings import logger
 from save_files.user_storage import update_user_data, user_data
-from service.CbRF import course_today, dinamic_course, parse_xml_data, graf_mobile, graf_not_mobile
+from service.CbRF import course_today, dinamic_course, parse_xml_data
 
 # Инициализируем роутер уровня модуля
 router = Router()
 
-# Глобальная переменная для планировщика
-scheduler = None
-
-
-def set_scheduler(sched):
-    global scheduler
-    scheduler = sched
-
-
-
-# @router.message(Command(commands=["today"]))
-# async def send_today_handler(message: Message):
-#     try:
-#         await message.answer(course_today())
-#     except Exception as e:
-#         logger.error(e)
-
-
-@router.message(Command(commands=["everyday"]))
-async def send_today_schedule_handler(message: Message):
-    user_id = message.from_user.id
-    if user_id in user_data:
-        try:
-            await update_user_data(message, "everyday_true", True)  # "send_today": True
-            schedule_daily_greeting(user_id, scheduler)
-        except Exception as e:
-            logger.error(f"Error in send_today_schedule_handler: {e}")
-        else:
-            await message.answer(
-                text=LEXICON_NOTIFICATION_SEND['everyday_true'])
-
-
-@router.message(Command(commands=["exchange_rate"]))
-async def send_today_schedule_handler(message: Message):
-    user_id = message.from_user.id
-    if user_data[user_id].get("exchange_rate") == True:
-        job_id = f"interval_greeting_{user_id}"
-        text = LEXICON_NOTIFICATION_SEND['exchange_rate_false']
-        if scheduler.get_job(job_id):
-            try:
-                schedule_unsubscribe(job_id, scheduler)
-            except Exception as e:
-                logger.error(e)
-            finally:
-                await update_user_data(message, "exchange_rate", False)
-                await message.answer(text)
-                logger.info(f'{user_id} отписан от рассылки {job_id}')
-    else:
-        try:
-            await update_user_data(message, "exchange_rate", True)
-            schedule_interval_greeting(user_id, scheduler)
-        except Exception as e:
-            logger.error(f"Error in send_today_schedule_handler: {e}")
-        else:
-            await message.answer(
-                text=LEXICON_NOTIFICATION_SEND['exchange_rate_true'])
-
-
-@router.message(Command(commands=["chart"]))
-async def send_html_graph(message: Message):
-    dollarCod = 'R01235'
-    dollar = dinamic_course(dollarCod)
-    dollar_data = parse_xml_data(dollar)
-    # Генерация графика
-    file_path = graf_mobile(dollar_data)
-
-    # Создаем кнопку для Web App
-    button_mobile = InlineKeyboardButton(
-        text="График на телефоне",  # Текст на кнопке
-        web_app=types.WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
-    )
-    button_pc = InlineKeyboardButton(
-        text="График на ПК",  # Текст на кнопке
-        callback_data=graf_not_mobile(dollar_data)
-    )
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[button_mobile], [button_pc]]
-    )
-    # Отправляем сообщение с кнопкой
-    await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
+# @router.message(Command(commands=["chart"]))
+# async def send_html_graph(message: Message):
+#     dollarCod = 'R01235'
+#     dollar = dinamic_course(dollarCod)
+#     dollar_data = parse_xml_data(dollar)
+#     # Генерация графика
+#     file_path = graf_mobile(dollar_data)
+#
+#     # Создаем кнопку для Web App
+#     button_mobile = InlineKeyboardButton(
+#         text="График на телефоне",  # Текст на кнопке
+#         web_app=types.WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
+#     )
+#     button_pc = InlineKeyboardButton(
+#         text="График на ПК",  # Текст на кнопке
+#         callback_data=graf_not_mobile(dollar_data)
+#     )
+#
+#     keyboard = InlineKeyboardMarkup(
+#         inline_keyboard=[[button_mobile], [button_pc]]
+#     )
+#     # Отправляем сообщение с кнопкой
+#     await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
 
 
 # @router.message(Command(commands=["chart"]))

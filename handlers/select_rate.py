@@ -1,5 +1,5 @@
 # select_rate.py
-import json
+import datetime
 import os
 
 from aiogram import Router, F
@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
+from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
@@ -18,6 +19,15 @@ from service.CbRF import course_today
 
 # Инициализируем роутер уровня модуля
 router = Router()
+
+# Глобальная переменная для планировщика
+scheduler = None
+
+
+def set_scheduler(sched):
+    global scheduler
+    scheduler = sched
+
 
 # Константы
 START_COMMAND = "start"
@@ -31,10 +41,15 @@ LAST_BTN = "last_btn"
 class UserState(StatesGroup):
     selected_buttons = State()  # Состояние для хранения выбранных кнопок
     selected_names = State()  # Состояние для хранения выбранных названий
+    start_year = State()
+    end_year = State()
+    graf = State()
+
 
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
     return next((item for item in LEXICON_GLOBAL if item["command"] == command), None)
+
 
 @router.message(Command(commands=START_COMMAND))
 async def process_start_handler(message: Message, state: FSMContext):
@@ -46,7 +61,6 @@ async def process_start_handler(message: Message, state: FSMContext):
         await save_user_data(message)
     else:
         await message.answer("Ошибка: данные для команды /start не найдены.")
-
 
 
 @router.callback_query(lambda c: c.data == get_lexicon_data(START_COMMAND)["btn"])
@@ -161,8 +175,11 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         buttons_to_add = [
             {"command": "select_rate", "btn": "Изменить валюту"},
             {"command": "today", "btn": "Курс ЦБ сегодня"},
-            {"command": "everyday", "btn1": "Подписаться на ежедневную рассылку курса", "btn2": "Отписаться от ежедневной рассылки курса"},
-            {"command": "exchange_rate", "btn1": "Подписаться на рассылку об изменении курса", "btn2": "Отписаться от рассылки об изменении курса"},
+            {"command": "tomorrow", "btn": "Курс ЦБ следующего дня"},
+            {"command": "everyday", "btn1": "Подписаться на ежедневную рассылку курса",
+             "btn2": "Отписаться от ежедневной рассылки курса"},
+            {"command": "exchange_rate", "btn1": "Подписаться на рассылку курса следующего дня",
+             "btn2": "Отписаться от рассылки курса следующего дня"},
             {"command": "chart", "btn": "Посмотреть график"},
             {"command": "in_banks", "btn": "Курс валют в банках"},
         ]
@@ -172,19 +189,21 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
             if item:
                 if item["command"] in ["everyday", "exchange_rate"]:
                     # Проверяем значения в user_state
-                    user_data_item = user_state.get(item["command"], False)  # По умолчанию False (не подписан)
-                    btn_key = "btn2" if user_data_item else "btn1"  # Выбираем кнопку в зависимости от состояния
+                    btn_key = "btn2" if user_data[user_id].get(
+                        "exchange_rate") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                     btn_text = item.get(btn_key, button_data.get(btn_key))
                 else:
                     btn_text = item.get("btn", button_data.get("btn"))
 
                 if btn_text:
-                    keyboard.inline_keyboard.append([InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
+                    keyboard.inline_keyboard.append(
+                        [InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
 
         # Отправляем сообщение с клавиатурой
-                # await callback.message.answer("Выберите действие:", reply_markup=keyboard)
+        # await callback.message.answer("Выберите действие:", reply_markup=keyboard)
 
-        await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}", reply_markup=keyboard)
+        await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}",
+                                      reply_markup=keyboard)
 
         # Путь к файлу (можно использовать абсолютный путь)
         currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
@@ -193,6 +212,7 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         update_selected_currency(user_data, user_id, currency_data)
 
         logger.info(f'user_data {user_data}')
+
 
 @router.message(Command(commands=["today"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("today")["command"])
@@ -204,11 +224,160 @@ async def send_today_handler(event: Message | CallbackQuery):
     try:
         user_id = event.from_user.id
         selected_data = user_data[user_id]["selected_currency"]
+        today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
         if isinstance(event, CallbackQuery):
             await event.answer('')
-            await event.message.answer(course_today(selected_data))
+            await event.message.answer(course_today(selected_data, today))
         else:  # isinstance(event, Message)
-            await event.answer(course_today(selected_data))
+            await event.answer(course_today(selected_data, today))
+        logger.info(f"Пользователь {user_id} вызвал комманду 'Курс сегодня'")
     except Exception as e:
         logger.error(e)
 
+
+@router.message(Command(commands=["tomorrow"]))
+@router.callback_query(lambda c: c.data == get_lexicon_data("tomorrow")["command"])
+async def send_tomorrow_handler(event: Message | CallbackQuery):
+    """
+    Обработчик для вывода курса выбранных валют пользователем для текущего дня.
+    Поддерживает как команду /tomorrow, так и callback от кнопки "Курс ЦБ следующего дня".
+    """
+    try:
+        user_id = event.from_user.id
+        selected_data = user_data[user_id]["selected_currency"]
+        tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d/%m/%Y")
+        if isinstance(event, CallbackQuery):
+            await event.answer('')
+            await event.message.answer(course_today(selected_data, tomorrow))
+        else:  # isinstance(event, Message)
+            await event.answer(course_today(selected_data, tomorrow))
+        logger.info(f"Пользователь {user_id} вызвал комманду 'Курс завтра'")
+    except Exception as e:
+        logger.error(e)
+
+
+@router.message(Command(commands=["exchange_rate"]))
+@router.callback_query(lambda c: c.data == get_lexicon_data("exchange_rate")["command"])
+async def send_tomorrow_schedule_handler(event: Message | CallbackQuery):
+    # Получаем user_id в зависимости от типа event
+    if isinstance(event, CallbackQuery):
+        user_id = event.from_user.id
+        message = event.message  # Для callback_query используем message из event
+    else:
+        user_id = event.from_user.id
+        message = event  # Для message используем сам event
+
+    # Проверяем, подписан ли пользователь на рассылку
+    if user_data[user_id].get("exchange_rate"):
+        job_id = f"interval_greeting_{user_id}"
+        text = get_lexicon_data("exchange_rate")['notification_false']
+
+        # Если задача существует, отменяем её
+        if scheduler.get_job(job_id):
+            try:
+                schedule_unsubscribe(job_id, scheduler)
+            except Exception as e:
+                logger.error(e)
+            finally:
+                await update_user_data_new(user_id, "exchange_rate", False)
+                await message.answer(text)
+                logger.info(f'{user_id} отписан от рассылки {job_id}')
+    else:
+        # Если пользователь не подписан, подписываем его
+        try:
+            await update_user_data_new(user_id, "exchange_rate", True)
+            selected_data = user_data[user_id]["selected_currency"]
+            tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d/%m/%Y")
+            if isinstance(event, CallbackQuery):
+                await event.answer('')
+            schedule_interval_greeting(user_id, scheduler, selected_data, tomorrow)
+            logger.info(f"Пользователь {user_id} подписался на рассылку 'Курс завтра'")
+        except Exception as e:
+            logger.error(f"Error in send_today_schedule_handler: {e}")
+        else:
+            await message.answer(text=get_lexicon_data("exchange_rate")['notification_true'])
+
+
+@router.message(Command(commands=["everyday"]))
+@router.callback_query(lambda c: c.data == get_lexicon_data("everyday")["command"])
+async def send_today_schedule_handler(event: Message | CallbackQuery):
+    # Получаем user_id в зависимости от типа event
+    if isinstance(event, CallbackQuery):
+        user_id = event.from_user.id
+        message = event.message  # Для callback_query используем message из event
+    else:
+        user_id = event.from_user.id
+        message = event  # Для message используем сам event
+
+    # Проверяем, подписан ли пользователь на рассылку
+    if user_data[user_id].get("everyday"):
+        job_id = f"daily_greeting_{user_id}"
+        text = get_lexicon_data("everyday")['notification_false']
+
+        # Если задача существует, отменяем её
+        if scheduler.get_job(job_id):
+            try:
+                schedule_unsubscribe(job_id, scheduler)
+            except Exception as e:
+                logger.error(e)
+            finally:
+                await update_user_data_new(user_id, "everyday", False)
+                await message.answer(text)
+                logger.info(f'{user_id} отписан от рассылки {job_id}')
+    else:
+        # Если пользователь не подписан, подписываем его
+        try:
+            await update_user_data_new(user_id, "everyday", True)
+            selected_data = user_data[user_id]["selected_currency"]
+            today = datetime.date.today().strftime("%d/%m/%Y")
+            if isinstance(event, CallbackQuery):
+                await event.answer('')
+            schedule_daily_greeting(user_id, scheduler, selected_data, today)
+            logger.info(f"Пользователь {user_id} подписался на рассылку 'Курс завтра'")
+        except Exception as e:
+            logger.error(f"Error in send_today_schedule_handler: {e}")
+        else:
+            await message.answer(text=get_lexicon_data("everyday")['notification_true'])
+
+
+@router.message(Command(commands=["chart"]))
+@router.callback_query(lambda c: c.data == get_lexicon_data("chart")["command"])
+async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
+    # Получаем user_id в зависимости от типа event
+    if isinstance(event, CallbackQuery):
+        user_id = event.from_user.id
+        message = event.message  # Для callback_query используем message из event
+    else:
+        user_id = event.from_user.id
+        message = event  # Для message используем сам event
+
+    await message.answer("Введите год начала")
+    await state.set_state(UserState.start_year)
+
+
+@router.message(UserState.start_year)
+async def end_year(message: Message, state: FSMContext):
+    await state.update_data(reminder_text=message.text)
+    await message.answer("Введите год окончания")
+    await state.set_state(UserState.end_year)
+
+# dollar = dinamic_course(dollarCod)
+# dollar_data = parse_xml_data(dollar)
+# # Генерация графика
+# file_path = graf_mobile(dollar_data)
+#
+# # Создаем кнопку для Web App
+# button_mobile = InlineKeyboardButton(
+#     text="График на телефоне",  # Текст на кнопке
+#     web_app=types.WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
+# )
+# button_pc = InlineKeyboardButton(
+#     text="График на ПК",  # Текст на кнопке
+#     callback_data=graf_not_mobile(dollar_data)
+# )
+#
+# keyboard = InlineKeyboardMarkup(
+#     inline_keyboard=[[button_mobile], [button_pc]]
+# )
+# # Отправляем сообщение с кнопкой
+# await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
