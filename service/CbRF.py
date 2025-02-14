@@ -290,5 +290,7 @@ def graf_mobile(currencies, start_year, end_year):
             showlegend=False
         )
 
-
-    return fig.write_html("index.html") # Возвращаем путь к файлу после обработки всех групп
+    # Сохранение графика в HTML-файл
+    file_path = "index.html"
+    fig.write_html(file_path)
+    return file_path  # Возвращаем путь к файлу
