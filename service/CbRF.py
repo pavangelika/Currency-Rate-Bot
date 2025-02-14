@@ -164,7 +164,7 @@ def categorize_currencies(currencies):
 
 
 
-def plot_currency_data_range(currencies, start_year, end_year):
+def graf_not_mobile(currencies, start_year, end_year):
     """
     Строит графики курсов валют за указанный период, группируя по указанным группам.
 
@@ -229,5 +229,69 @@ def plot_currency_data_range(currencies, start_year, end_year):
         # Показ графика
         fig.show()
 
+def graf_mobile(currencies, start_year, end_year):
+        """
+        Строит графики курсов валют за указанный период, группируя по указанным группам.
 
-# plot_currency_data_range(group_for_graf, start_year, end_year)
+        Args:
+            currencies: Список валют с данными о курсах и группах.
+            start_year: Год начала периода.
+            end_year: Год конца периода.
+        """
+        # Подготовка данных для графиков по группам
+        grouped_data = {}
+        for currency in currencies:
+            name = currency['name']
+            value_data = currency['value']
+            group = currency['group']
+
+            # Собираем данные для каждого года в пределах указанного диапазона
+            for year in range(start_year, end_year + 1):
+                year_data = value_data.get(year, {})
+                if year_data:
+                    if group not in grouped_data:
+                        grouped_data[group] = {'names': set(), 'data': []}  # Используем множество
+                    grouped_data[group]['names'].add(name)  # Добавляем имя валюты в множество
+                    grouped_data[group]['data'].append({'name': name, 'year': year, 'data': year_data})
+
+        # Создаем график для каждой группы
+        for group, data_group in grouped_data.items():
+            fig = go.Figure()
+            names_str = ', '.join(data_group['names'])  # Строка с уникальными именами валют
+
+            for data_entry in data_group['data']:
+                name = data_entry['name']
+                year = data_entry['year']
+                year_data = data_entry['data']
+
+                # Преобразуем данные в DataFrame для удобства
+                temp_df = pd.DataFrame(year_data.items(), columns=['Дата', 'Курс'])
+                temp_df['Дата'] = pd.to_datetime(temp_df['Дата'], format='%d.%m.%Y')
+
+                # Добавляем линию в график
+                fig.add_trace(go.Scatter(
+                    x=temp_df['Дата'],
+                    y=temp_df['Курс'],
+                    mode='lines',
+                    name=f'{name} - {year}',
+                    hoverinfo='y+text',
+                    text=f'{name}'  # Отображение имени валюты при наведении
+                ))
+
+            # Настройка внешнего вида графика
+            fig.update_layout(
+                title=f'{names_str}: Курсы валют с {start_year} по {end_year} год',  # Уникальные имена валют
+                xaxis_title='Дата',
+                yaxis_title='Курс',
+                xaxis=dict(
+                    tickformat='%d.%m.%y',
+                    tickangle=45
+                ),
+                hovermode='x',
+                showlegend=False
+            )
+
+            # Сохранение графика в HTML-файл
+            file_path = "index.html"
+            fig.write_html(file_path)
+            return file_path

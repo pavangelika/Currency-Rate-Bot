@@ -1,6 +1,9 @@
 # BOT_TOKEN
 /config_data
 
+# Курсы валют
+/save_currency/
+
 # Виртуальные окружения
 venv/
 env/
@@ -18,3 +21,4 @@ env/
 *.tmp
 *.swp
 *~
+

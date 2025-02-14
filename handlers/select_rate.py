@@ -1,13 +1,13 @@
 # select_rate.py
 import datetime
 import os
-
+from config_data import config
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-
+from aiogram.types import Message
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
@@ -15,7 +15,8 @@ from lexicon.lexicon import CURRENCY, \
     LEXICON_GLOBAL
 from logger.logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data_new, user_data
-from service.CbRF import course_today
+from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, graf_not_mobile
+from aiogram.types.web_app_info import WebAppInfo
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -41,8 +42,7 @@ LAST_BTN = "last_btn"
 class UserState(StatesGroup):
     selected_buttons = State()  # Состояние для хранения выбранных кнопок
     selected_names = State()  # Состояние для хранения выбранных названий
-    start_year = State()
-    end_year = State()
+    years = State()
     graf = State()
 
 
@@ -211,8 +211,6 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         currency_data = load_currency_data(currency_file_path)
         update_selected_currency(user_data, user_id, currency_data)
 
-        logger.info(f'user_data {user_data}')
-
 
 @router.message(Command(commands=["today"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("today")["command"])
@@ -351,33 +349,53 @@ async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
         user_id = event.from_user.id
         message = event  # Для message используем сам event
 
-    await message.answer("Введите год начала")
-    await state.set_state(UserState.start_year)
+    await message.answer("Введите диапазон лет (например, 2022-2025 или 2025):")
+    await state.set_state(UserState.years)
 
 
-@router.message(UserState.start_year)
+@router.message(UserState.years)
 async def end_year(message: Message, state: FSMContext):
+    user_id = message.from_user.id
     await state.update_data(reminder_text=message.text)
-    await message.answer("Введите год окончания")
-    await state.set_state(UserState.end_year)
+    user_input = message.text
+    years = user_input.split('-')
+    if len(years) == 2:
+        start = int(years[0])
+        end = int(years[1])
+    elif len(years) == 1:
+        start = int(years[0])
+        end = int(years[0])
+    else:
+        await message.answer("Некорректный ввод. Пожалуйста, введите данные в формате '2022-2025' или '2025'.")
+        start = None
+        end = None
 
-# dollar = dinamic_course(dollarCod)
-# dollar_data = parse_xml_data(dollar)
-# # Генерация графика
-# file_path = graf_mobile(dollar_data)
-#
-# # Создаем кнопку для Web App
-# button_mobile = InlineKeyboardButton(
-#     text="График на телефоне",  # Текст на кнопке
-#     web_app=types.WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
-# )
-# button_pc = InlineKeyboardButton(
-#     text="График на ПК",  # Текст на кнопке
-#     callback_data=graf_not_mobile(dollar_data)
-# )
-#
-# keyboard = InlineKeyboardMarkup(
-#     inline_keyboard=[[button_mobile], [button_pc]]
-# )
-# # Отправляем сообщение с кнопкой
-# await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
+    selected_data = user_data[user_id]["selected_currency"]
+    selected_data_list = []
+    for sd in selected_data:
+        result = dinamic_course(sd['id'])
+        name = sd['charCode']
+        with open(f'save_currency/{name}.xml', 'wb') as f:
+            f.write(result)
+        result_data = parse_xml_data(result)
+        selected_data_list.append({"name": name, "value": result_data})
+
+        group_for_graf = categorize_currencies(selected_data_list)
+        index = graf_mobile(group_for_graf, start, end)
+
+        # Создаем кнопку для Web App
+        button_mobile = InlineKeyboardButton(
+            text="График на телефоне",  # Текст на кнопке
+            web_app=WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
+        )
+        button_pc = InlineKeyboardButton(
+            text="График на ПК",  # Текст на кнопке
+            callback_data = "graf_not_mobile"
+            # callback_data=graf_not_mobile(group_for_graf, start, end)
+        )
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[button_mobile], [button_pc]]
+        )
+        # Отправляем сообщение с кнопкой
+        await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)

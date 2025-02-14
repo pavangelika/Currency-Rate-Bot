@@ -1,15 +1,8 @@
 # user_handlers.py
 
-from aiogram import Router, types
+from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
-from config_data import config
-
-from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
-from lexicon.lexicon import  LEXICON_NOTIFICATION_SEND
-from logger.logging_settings import logger
-from save_files.user_storage import update_user_data, user_data
-from service.CbRF import course_today, dinamic_course, parse_xml_data
+from aiogram.types import Message
 
 # Инициализируем роутер уровня модуля
 router = Router()
