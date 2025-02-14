@@ -15,7 +15,7 @@ from handlers.notifications import schedule_daily_greeting, schedule_interval_gr
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
-    LEXICON_GLOBAL, LEXICON_MENU
+    LEXICON_GLOBAL, LEXICON_IN_MESSAGE
 from logger.logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data_new, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
@@ -174,7 +174,7 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
         keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
-        for button_data in LEXICON_MENU:
+        for button_data in LEXICON_IN_MESSAGE:
             item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
             if item:
                 if item["command"] in ["everyday", "exchange_rate"]:
