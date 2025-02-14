@@ -1,22 +1,25 @@
 # select_rate.py
 import datetime
 import os
-from config_data import config
+
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types import Message
+from aiogram.types.web_app_info import WebAppInfo
+from config_data import config
+
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
-    LEXICON_GLOBAL
+    LEXICON_GLOBAL, LEXICON_MENU
 from logger.logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data_new, user_data
-from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, graf_not_mobile
-from aiogram.types.web_app_info import WebAppInfo
+from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
+    graf_not_mobile
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -171,20 +174,7 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
         keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
-        # Добавляем кнопки
-        buttons_to_add = [
-            {"command": "select_rate", "btn": "Изменить валюту"},
-            {"command": "today", "btn": "Курс ЦБ сегодня"},
-            {"command": "tomorrow", "btn": "Курс ЦБ следующего дня"},
-            {"command": "everyday", "btn1": "Подписаться на ежедневную рассылку курса",
-             "btn2": "Отписаться от ежедневной рассылки курса"},
-            {"command": "exchange_rate", "btn1": "Подписаться на рассылку курса следующего дня",
-             "btn2": "Отписаться от рассылки курса следующего дня"},
-            {"command": "chart", "btn": "Посмотреть график"},
-            {"command": "in_banks", "btn": "Курс валют в банках"},
-        ]
-
-        for button_data in buttons_to_add:
+        for button_data in LEXICON_MENU:
             item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
             if item:
                 if item["command"] in ["everyday", "exchange_rate"]:
@@ -343,10 +333,9 @@ async def send_today_schedule_handler(event: Message | CallbackQuery):
 async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
     # Получаем user_id в зависимости от типа event
     if isinstance(event, CallbackQuery):
-        user_id = event.from_user.id
+        await event.answer('')
         message = event.message  # Для callback_query используем message из event
     else:
-        user_id = event.from_user.id
         message = event  # Для message используем сам event
 
     await message.answer("Введите диапазон лет (например, 2022-2025 или 2025):")
@@ -367,35 +356,60 @@ async def end_year(message: Message, state: FSMContext):
         end = int(years[0])
     else:
         await message.answer("Некорректный ввод. Пожалуйста, введите данные в формате '2022-2025' или '2025'.")
-        start = None
-        end = None
+        return
+
+    # Сохраняем start и end в состояние
+    await state.update_data(start=start, end=end)
 
     selected_data = user_data[user_id]["selected_currency"]
     selected_data_list = []
     for sd in selected_data:
         result = dinamic_course(sd['id'])
         name = sd['charCode']
-        with open(f'save_currency/{name}.xml', 'wb') as f:
-            f.write(result)
         result_data = parse_xml_data(result)
         selected_data_list.append({"name": name, "value": result_data})
 
-        group_for_graf = categorize_currencies(selected_data_list)
-        index = graf_mobile(group_for_graf, start, end)
+    group_for_graf = categorize_currencies(selected_data_list)
+    index = graf_mobile(group_for_graf, start, end)
 
-        # Создаем кнопку для Web App
-        button_mobile = InlineKeyboardButton(
-            text="График на телефоне",  # Текст на кнопке
-            web_app=WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
-        )
-        button_pc = InlineKeyboardButton(
-            text="График на ПК",  # Текст на кнопке
-            callback_data = "graf_not_mobile"
-            # callback_data=graf_not_mobile(group_for_graf, start, end)
-        )
+    # Создаем кнопку для Web App
+    button_mobile = InlineKeyboardButton(
+        text="График на телефоне",  # Текст на кнопке
+        web_app=WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
+    )
+    button_pc = InlineKeyboardButton(
+        text="График на ПК",  # Текст на кнопке
+        callback_data="pc_graph"
+        # callback_data=graf_not_mobile(group_for_graf, start, end)
+    )
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[[button_mobile], [button_pc]]
-        )
-        # Отправляем сообщение с кнопкой
-        await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[button_mobile], [button_pc]]
+    )
+    # Отправляем сообщение с кнопкой
+    await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
+
+
+@router.callback_query(lambda c: c.data == "pc_graph")
+async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('')
+    data = await state.get_data()
+    start = data.get("start")
+    end = data.get("end")
+
+    if start is None or end is None:
+        logger.error("Ошибка btn_graf_not_mobile: не удалось получить диапазон лет.")
+        return
+
+    user_id = callback.from_user.id
+    selected_data = user_data[user_id]["selected_currency"]
+
+    selected_data_list = []
+    for sd in selected_data:
+        result = dinamic_course(sd['id'])
+        name = sd['charCode']
+        result_data = parse_xml_data(result)
+        selected_data_list.append({"name": name, "value": result_data})
+
+    group_for_graf = categorize_currencies(selected_data_list)
+    graf_not_mobile(group_for_graf, start, end)
