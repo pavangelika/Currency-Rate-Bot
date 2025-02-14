@@ -16,7 +16,7 @@ from handlers.notifications import schedule_daily_greeting, schedule_interval_gr
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
-    LEXICON_GLOBAL, LEXICON_IN_MESSAGE, file_path
+    LEXICON_GLOBAL, LEXICON_IN_MESSAGE
 from logger.logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data_new, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
@@ -372,8 +372,7 @@ async def end_year(message: Message, state: FSMContext):
 
     group_for_graf = categorize_currencies(selected_data_list)
     index = graf_mobile(group_for_graf, start, end)
-    print(f"File exists: {os.path.exists(index)}")
-
+    logger.info(f"File index.html updated: {os.path.exists(index)}")
     # Создаем кнопку для Web App
     button_mobile = InlineKeyboardButton(
         text="График на телефоне",  # Текст на кнопке
@@ -416,3 +415,27 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
 
     group_for_graf = categorize_currencies(selected_data_list)
     graf_not_mobile(group_for_graf, start, end)
+
+
+@router.message(Command(commands=["menu"]))
+async def menu(message: Message):
+    user_id = message.from_user.id
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+
+    for button_data in LEXICON_IN_MESSAGE:
+        item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
+        if item:
+            if item["command"] in ["everyday", "exchange_rate"]:
+                # Проверяем значения в user_state
+                btn_key = "btn2" if user_data[user_id].get(
+                    "exchange_rate") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
+                btn_text = item.get(btn_key, button_data.get(btn_key))
+            else:
+                btn_text = item.get("btn", button_data.get("btn"))
+
+            if btn_text:
+                keyboard.inline_keyboard.append(
+                    [InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
+
+    await message.answer("Выберите действие:", reply_markup=keyboard)

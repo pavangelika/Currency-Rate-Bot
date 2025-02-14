@@ -23,11 +23,7 @@ CURRENCY = create_buttons_from_json_file(file_path)
 
 LEXICON_MENU: list[dict[str, str]] = [
     {"command": "start", "name": "Сброс всех параметров. Начать заново"},
-    {"command": "select_rate", "name": "Изменить валюту"},
-    {"command": "today","name": "Курс ЦБ сегодня"},
-    {"command": "everyday",  "name": "Подписаться/Отписаться на ежедневную рассылку курса"},
-    {"command": "chart", "name": "Посмотреть график"},
-    {"command": "in_banks", "name": "Курс валют в банках моего города"},
+    {"command": "menu", "name": "Действия с ботом"},
     {"command": "user_remind","name": "Напоминание о чем-то через заданный интервал времени"}
 ]
 
