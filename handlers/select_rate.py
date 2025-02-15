@@ -5,11 +5,13 @@ import time
 
 from aiogram import Router, F
 from aiogram.filters import Command
+from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from config_data import config
 
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
@@ -21,6 +23,7 @@ from logger.logging_settings import logger
 from save_files.user_storage import save_user_data, update_user_data_new, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
     graf_not_mobile
+
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -439,3 +442,27 @@ async def menu(message: Message):
                     [InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
 
     await message.answer("Выберите действие:", reply_markup=keyboard)
+
+@router.callback_query(lambda c: c.data == "in_banks")
+async def in_banks(callback: CallbackQuery, state: FSMContext):
+    # Инициализируем билдер
+    kb_builder = ReplyKeyboardBuilder()
+    geo_btn = KeyboardButton(
+        text='Отправить геолокацию',
+        request_location=True
+    )
+    # Добавляем кнопки в билдер
+    kb_builder.row(geo_btn, width=1)
+
+    # Создаем объект клавиатуры
+    keyboard: ReplyKeyboardMarkup = kb_builder.as_markup(
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+
+    await callback.message.answer(
+        text='Для показа курс валют в банках вашего города требуется узнать ваш город:',
+        reply_markup=keyboard
+    )
+
+    # await callback.message.answer("Для показа курс валют в банках вашего города требуется узнать ваш город:", reply_markup=keyboard)

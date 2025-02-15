@@ -103,7 +103,7 @@ LEXICON_GLOBAL: list[dict[str, str]] = [
     {
         "command": "in_banks",
         "name": "Курс валют в банках моего города",
-        "btn1": "Ввести гео",
+        "btn1": "Отправить геопозицию",
         "btn2": "Показать банки",
         "notification_true": "",
         "notification_false": ""
