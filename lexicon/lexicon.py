@@ -30,11 +30,8 @@ LEXICON_MENU: list[dict[str, str]] = [
 LEXICON_IN_MESSAGE: list[dict[str, str]] = [
     {"command": "select_rate", "btn": "Изменить валюту"},
     {"command": "today", "btn": "Курс ЦБ сегодня"},
-    {"command": "tomorrow", "btn": "Курс ЦБ следующего дня"},
     {"command": "everyday", "btn1": "Подписаться на ежедневную рассылку курса",
      "btn2": "Отписаться от ежедневной рассылки курса"},
-    {"command": "exchange_rate", "btn1": "Подписаться на рассылку курса следующего дня",
-     "btn2": "Отписаться от рассылки курса следующего дня"},
     {"command": "chart", "btn": "Посмотреть график"},
     {"command": "in_banks", "btn": "Курс валют в банках"},
 ]
@@ -63,11 +60,6 @@ LEXICON_GLOBAL: list[dict[str, str]] = [
         "command": "today",
         "name": "Курс ЦБ сегодня",
         "btn": "Курс ЦБ сегодня"
-    },
-    {
-        "command": "tomorrow",
-        "name": "Курс ЦБ следующего дня",
-        "btn": "Курс ЦБ следующего дня"
     },
     {
         "command": "everyday",
@@ -115,26 +107,10 @@ LEXICON_GLOBAL: list[dict[str, str]] = [
         "btn2": "Отписаться от рассылки изменений",
         "notification_true": "",
         "notification_false": ""
-    },
-    {
-        "command": "unsubscribe",
-        "name": "Отписаться",
-        "btn1": "",
-        "btn2": "",
-        "notification_true": "",
-        "notification_false": ""
     }
 ]
 
 LEXICON_BTN: dict[str, str] = {
     'start_1': 'Выбор валюты',
     'start_2': 'Изменить валюту',
-    'start_3': 'Ежедневная рассылка курса',
-    'start_4': 'Уведомление об изменении курса',
-    'start_5': 'Уведомление при достижении курса',
-    'start_6': 'Посмотреть график',
-    'start_7': 'Конвертер валют',
-    'start_8': 'Курс валют в банках по гео',
-    'start_9': 'Отписаться',
-
 }
