@@ -32,6 +32,7 @@ LEXICON_IN_MESSAGE: list[dict[str, str]] = [
     {"command": "today", "btn": "Курс ЦБ сегодня"},
     {"command": "everyday", "btn1": "Подписаться на ежедневную рассылку курса",
      "btn2": "Отписаться от ежедневной рассылки курса"},
+
     {"command": "chart", "btn": "Посмотреть график"},
     {"command": "in_banks", "btn": "Курс валют в банках"},
 ]
@@ -112,5 +113,6 @@ LEXICON_GLOBAL: list[dict[str, str]] = [
 
 LEXICON_BTN: dict[str, str] = {
     'start_1': 'Выбор валюты',
-    'start_2': 'Изменить валюту',
+    'start_2': 'Изменить валюту'
+
 }

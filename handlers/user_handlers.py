@@ -227,28 +227,6 @@ async def send_today_handler(event: Message | CallbackQuery):
     except Exception as e:
         logger.error(e)
 
-
-@router.message(Command(commands=["tomorrow"]))
-@router.callback_query(lambda c: c.data == get_lexicon_data("tomorrow")["command"])
-async def send_tomorrow_handler(event: Message | CallbackQuery):
-    """
-    Обработчик для вывода курса выбранных валют пользователем для текущего дня.
-    Поддерживает как команду /tomorrow, так и callback от кнопки "Курс ЦБ следующего дня".
-    """
-    try:
-        user_id = event.from_user.id
-        selected_data = user_data[user_id]["selected_currency"]
-        tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d/%m/%Y")
-        if isinstance(event, CallbackQuery):
-            await event.answer('')
-            await event.message.answer(course_today(selected_data, tomorrow))
-        else:  # isinstance(event, Message)
-            await event.answer(course_today(selected_data, tomorrow))
-        logger.info(f"Пользователь {user_id} вызвал комманду 'Курс завтра'")
-    except Exception as e:
-        logger.error(e)
-
-
 @router.message(Command(commands=["exchange_rate"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("exchange_rate")["command"])
 async def send_tomorrow_schedule_handler(event: Message | CallbackQuery):
