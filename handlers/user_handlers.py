@@ -182,10 +182,10 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         for button_data in LEXICON_IN_MESSAGE:
             item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
             if item:
-                if item["command"] in ["everyday", "exchange_rate"]:
+                if item["command"] in ["everyday"]:
                     # Проверяем значения в user_state
                     btn_key = "btn2" if user_data[user_id].get(
-                        "exchange_rate") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
+                        "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                     btn_text = item.get(btn_key, button_data.get(btn_key))
                 else:
                     btn_text = item.get("btn", button_data.get("btn"))
@@ -328,50 +328,71 @@ async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
 @router.message(UserState.years)
 async def end_year(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    await state.update_data(reminder_text=message.text)
-    user_input = message.text
-    years = user_input.split('-')
-    if len(years) == 2:
-        start = int(years[0])
-        end = int(years[1])
-    elif len(years) == 1:
-        start = int(years[0])
-        end = int(years[0])
-    else:
-        await message.answer("Некорректный ввод. Пожалуйста, введите данные в формате '2022-2025' или '2025'.")
-        return
+    user_input = message.text.strip()  # Remove any leading/trailing whitespace
 
-    # Сохраняем start и end в состояние
-    await state.update_data(start=start, end=end)
+    # Check if the input is a command (starts with '/')
+    if user_input.find('-'):
+        years = user_input.split('-')
 
-    selected_data = user_data[user_id]["selected_currency"]
-    selected_data_list = []
-    for sd in selected_data:
-        result = dinamic_course(sd['id'])
-        name = sd['charCode']
-        result_data = parse_xml_data(result)
-        selected_data_list.append({"name": name, "value": result_data})
+        # Validate the input
+        if len(years) == 1:
+            # Single year
+            try:
+                start = int(years[0])
+                end = start
+            except ValueError:
+                await message.answer("Некорректный ввод. Пожалуйста, введите год в формате '2025'.")
+                return
+        elif len(years) == 2:
+            # Year range
+            try:
+                start = int(years[0])
+                end = int(years[1])
+            except ValueError:
+                await message.answer("Некорректный ввод. Пожалуйста, введите диапазон лет в формате '2022-2025'.")
+                return
+        else:
+            await message.answer("Некорректный ввод. Пожалуйста, введите данные в формате '2022-2025' или '2025'.")
+            return
 
-    group_for_graf = categorize_currencies(selected_data_list)
-    index = graf_mobile(group_for_graf, start, end)
-    logger.info(f"File index.html updated: {os.path.exists(index)}")
-    # Создаем кнопку для Web App
+        # Ensure that the start year is less than or equal to the end year
+        if start > end:
+            await message.answer("Начальный год должен быть меньше или равен конечному году.")
+            return
+
+        # Save the start and end years in the state
+        await state.update_data(start=start, end=end)
+
+        # Proceed with the rest of the logic
+        selected_data = user_data[user_id]["selected_currency"]
+        selected_data_list = []
+        for sd in selected_data:
+            result = dinamic_course(sd['id'])
+            name = sd['charCode']
+            result_data = parse_xml_data(result)
+            selected_data_list.append({"name": name, "value": result_data})
+
+        group_for_graf = categorize_currencies(selected_data_list)
+        index = graf_mobile(group_for_graf, start, end)
+        logger.info(f"File index.html updated: {os.path.exists(index)}")
+
+    # Create buttons for Web App
     button_mobile = InlineKeyboardButton(
-        text="График на телефоне",  # Текст на кнопке
-        web_app=WebAppInfo(url=f"{config.GITHUB_PAGES}?v={int(time.time())}")  # Добавляем временную метку
-        # web_app=WebAppInfo(url=config.GITHUB_PAGES)  # URL к размещенному HTML
+        text="График на телефоне",
+        web_app=WebAppInfo(url=f"{config.GITHUB_PAGES}?v={int(time.time())}")
     )
     button_pc = InlineKeyboardButton(
-        text="График на ПК",  # Текст на кнопке
+        text="График на ПК",
         callback_data="pc_graph"
-        # callback_data=graf_not_mobile(group_for_graf, start, end)
     )
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[button_mobile], [button_pc]]
     )
-    # Отправляем сообщение с кнопкой
+
+    # Send the message with the buttons
     await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
+
 
 
 @router.callback_query(lambda c: c.data == "pc_graph")
@@ -408,10 +429,10 @@ async def menu(message: Message):
     for button_data in LEXICON_IN_MESSAGE:
         item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
         if item:
-            if item["command"] in ["everyday", "exchange_rate"]:
+            if item["command"] in ["everyday"]:
                 # Проверяем значения в user_state
                 btn_key = "btn2" if user_data[user_id].get(
-                    "exchange_rate") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
+                    "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                 btn_text = item.get(btn_key, button_data.get(btn_key))
             else:
                 btn_text = item.get("btn", button_data.get("btn"))
@@ -432,9 +453,9 @@ async def in_banks(callback: CallbackQuery, state: FSMContext):
 
     await callback.answer("")
 
-    await callback.message.answer('Курс валют в банках: Сравните курсы валют в вашем городе за секунды! '
-                                  'Следить за курсом продажи: Продайте валюту по лучшей цене!'
-                                  'Следить за курсом покупки: Купите валюту выгодно!', reply_markup=main)
+    await callback.message.answer('️Сравните курсы валют в вашем городе за секунды! \n'                                  
+                                  'Купите валюту выгодно! \n'
+                                  'Продайте валюту по лучшей цене! \n', reply_markup=main)
 
 
     # await callback.message.answer("Для показа курс валют в банках вашего города требуется узнать ваш город:", reply_markup=keyboard)
