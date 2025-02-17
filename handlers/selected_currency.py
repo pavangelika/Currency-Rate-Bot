@@ -11,15 +11,15 @@ def extract_currency_code(currency_str):
         return currency_str.split('(')[-1].rstrip(')')
     return None
 
-def update_selected_currency(user_data, user_id, currency_data):
+def update_selected_currency(user_dict, user_id, currency_data):
     """
     Заменяет selected_currency на список объектов из currency.json,
     где charCode совпадает с кодами из selected_currency.
     """
-    if user_id not in user_data:
-        raise KeyError(f"User ID {user_id} not found in user_data.")
+    if user_id not in user_dict:
+        raise KeyError(f"User ID not found in user_data.")
 
-    selected_currency = user_data[user_id].get('selected_currency', set())
+    selected_currency = user_dict[user_id].get('selected_currency', set())
     updated_currencies = []
 
     for currency_str in selected_currency:
@@ -30,8 +30,7 @@ def update_selected_currency(user_data, user_id, currency_data):
             if matched_currency:
                 updated_currencies.append(matched_currency)
 
-    # Обновляем selected_currency
-    user_data[user_id]['selected_currency'] = updated_currencies
+    return updated_currencies
 
 def load_currency_data(file_path):
     """

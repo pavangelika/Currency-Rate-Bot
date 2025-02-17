@@ -1,7 +1,5 @@
 # main.py
-
 import asyncio
-
 from aiogram import Bot, Dispatcher
 from config_data import config
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -11,27 +9,19 @@ from logger.logging_settings import logger
 from service.CbRF import currency
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# Функция конфигурирования и запуска бота
 async def main():
-    # Инициализируем хранилище (создаем экземпляр класса MemoryStorage)
+    # Инициализируем MemoryStorage для хранения данных пользователей
     storage = MemoryStorage()
 
-    # Создаем "базу данных" пользователей
-    user_dict: dict[int, dict[str, str | int | bool]] = {}
-
-    # Инициализируем бота
+    # Инициализируем бота и диспетчер с хранилищем
     bot = Bot(token=config.BOT_TOKEN)
-    dp = Dispatcher()
+    dp = Dispatcher(storage=storage)
 
     # Инициализируем планировщик
     scheduler = AsyncIOScheduler(timezone='Europe/Moscow')
 
     # Настраиваем кнопку Menu
     await set_main_menu(bot)
-
-    # Передаем user_dict в обработчики
-    user_handlers.set_user_dict(user_dict)
-    user_remind.set_user_dict(user_dict)
 
     # Регистрируем роутеры в диспетчере
     dp.include_router(user_remind.router)
@@ -58,7 +48,6 @@ async def main():
         await bot.session.close()
         logger.info('Bot shutdown')
         scheduler.shutdown()  # Выключаем планировщик
-
 
 if __name__ == '__main__':
     asyncio.run(main())

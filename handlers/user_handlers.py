@@ -21,7 +21,7 @@ from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_sel
 from lexicon.lexicon import CURRENCY, \
     LEXICON_GLOBAL, LEXICON_IN_MESSAGE
 from logger.logging_settings import logger
-from save_files.user_storage import save_user_data, update_user_data_new, user_data
+# from save_files.user_storage import save_user_data, update_user_data_new, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
     graf_not_mobile
 
@@ -32,25 +32,13 @@ router = Router()
 # Глобальная переменная для планировщика
 scheduler = None
 
-
 def set_scheduler(sched):
     global scheduler
     scheduler = sched
 
-def set_user_dict(ud):
-    global user_dict
-    user_dict = ud
-
-# Константы
-SELECT_RATE_COMMAND = "select_rate"
-TOGGLE_PREFIX = "toggle_"
-PAGE_PREFIX = "page_"
-LAST_BTN = "last_btn"
-
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
     return next((item for item in LEXICON_GLOBAL if item["command"] == command), None)
-
 
 @router.message(Command(commands="start"), StateFilter(default_state))
 async def process_start_handler(message: Message, state: FSMContext):
@@ -59,22 +47,31 @@ async def process_start_handler(message: Message, state: FSMContext):
     if start_data:
         keyboard = create_inline_kb(1, start_data["btn"])
         await message.answer(text=start_data["text"], reply_markup=keyboard)
-        await save_user_data(message)
-        await state.update_data(id = message.from_user.id)
-        await state.update_data(name=message.from_user.first_name)
-        await state.update_data(username=message.from_user.username)
-        await state.update_data(chat_id=message.chat.id)
-        await state.update_data(bot=message.from_user.is_bot)
-        await state.update_data(premium=message.from_user.is_premium)
-        user_data = await state.get_data()
-        logger.info(f"User data {message.from_user.id} has been saved: {user_data}")
+        # Создаем словарь с данными пользователя
+        user_data = {
+            "id": message.from_user.id,
+            "name": message.from_user.first_name,
+            "username": message.from_user.username,
+            "chat_id": message.chat.id,
+            "bot": message.from_user.is_bot,
+            "premium": message.from_user.is_premium,
+            "date_start": message.date.strftime("%d/%m/%Y %H:%M"),
+            "timezone": message.date.tzname() or "UTC",  # Если tzname() возвращает None, используем "UTC"
+        }
+
+        # Сохраняем данные в FSMContext
+        await state.update_data({message.from_user.id: user_data})
+
+        # Логируем данные пользователя
+        user_dict = await state.get_data()
+        logger.info(f"User data {message.from_user.id} has been saved: {user_dict}")
     else:
         await message.answer("Ошибка: данные для команды /start не найдены.")
 
 
-@router.callback_query(lambda c: c.data == get_lexicon_data("start")["btn"])
-@router.callback_query(lambda c: c.data == get_lexicon_data("select_rate")["command"])
-@router.message(Command(commands=[SELECT_RATE_COMMAND]))
+@router.callback_query(F.data == get_lexicon_data("start")["btn"])
+@router.callback_query(F.data == get_lexicon_data("select_rate")["command"])
+@router.message(Command(commands=["select_rate"]))
 async def handle_currency_selection(event: Message | CallbackQuery, state: FSMContext):
     """
     Обработчик для выбора валюты.
@@ -105,7 +102,7 @@ async def handle_currency_selection(event: Message | CallbackQuery, state: FSMCo
         logger.error(e)
 
 
-@router.callback_query(F.data.startswith(TOGGLE_PREFIX) | F.data.startswith(PAGE_PREFIX))
+@router.callback_query(F.data.startswith("toggle_") | F.data.startswith("page_"))
 async def handle_toggle_and_pagination(callback: CallbackQuery, state: FSMContext):
     """Обработчик переключения состояния кнопок и пагинации."""
     user_id = callback.from_user.id
@@ -116,9 +113,9 @@ async def handle_toggle_and_pagination(callback: CallbackQuery, state: FSMContex
     selected_buttons = user_data.get("selected_buttons", set())
     selected_names = user_data.get("selected_names", set())
 
-    if data.startswith(TOGGLE_PREFIX):
+    if data.startswith("toggle_"):
         # Обработка переключения кнопки
-        button = data[len(TOGGLE_PREFIX):-2]
+        button = data[len("toggle_"):-2]
         current_page = int(data.split("_")[3])
 
         if button in selected_buttons:
@@ -134,7 +131,7 @@ async def handle_toggle_and_pagination(callback: CallbackQuery, state: FSMContex
                 else:
                     selected_names.add(select_name)
 
-    elif data.startswith(PAGE_PREFIX):
+    elif data.startswith("page_"):
         # Обработка пагинации
         current_page = int(data.split("_")[1])
 
@@ -156,11 +153,11 @@ async def handle_toggle_and_pagination(callback: CallbackQuery, state: FSMContex
         logger.error(e)
 
 
-@router.callback_query(F.data == LAST_BTN)
+@router.callback_query(F.data == "last_btn")
 async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
     """Обработчик последней кнопки."""
     user_id = callback.from_user.id
-    select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == SELECT_RATE_COMMAND), None)
+    select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == "select_rate"), None)
 
     # Получаем текущее состояние
     user_state = await state.get_data()
@@ -170,12 +167,14 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
     if not selected_buttons:
         await callback.answer('')
         await callback.message.answer(select_rate_data["notification_false"])
-        await update_user_data_new(user_id, "selected_currency", False)
+        # await update_user_data_new(user_id, "selected_currency", False)
+        await state.update_data(selected_currency=False)
     else:
         logger.info(f'Пользователь {user_id} выбрал валюту {selected_names}')
-        await update_user_data_new(user_id, "selected_currency", selected_names)
+        user_dict = await state.get_data()
+        logger.info(user_dict)
+        # await update_user_data_new(user_id, "selected_currency", selected_names)
         await callback.answer('')
-        # await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}")
 
         # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
         keyboard = InlineKeyboardMarkup(inline_keyboard=[])
@@ -185,7 +184,7 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
             if item:
                 if item["command"] in ["everyday"]:
                     # Проверяем значения в user_state
-                    btn_key = "btn2" if user_data[user_id].get(
+                    btn_key = "btn2" if user_dict[user_id].get(
                         "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                     btn_text = item.get(btn_key, button_data.get(btn_key))
                 else:
@@ -205,19 +204,22 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
         # Загрузка данных о валютах
         currency_data = load_currency_data(currency_file_path)
-        update_selected_currency(user_data, user_id, currency_data)
+        updated_currencies = update_selected_currency(user_dict, user_id, currency_data)
+        user_dict[user_id]["selected_currency"] = updated_currencies
+    logger.info(user_dict)
 
 
 @router.message(Command(commands=["today"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("today")["command"])
-async def send_today_handler(event: Message | CallbackQuery):
+async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
     """
     Обработчик для вывода курса выбранных валют пользователем для текущего дня.
     Поддерживает как команду /today, так и callback от кнопки "Курс ЦБ сегодня".
     """
     try:
         user_id = event.from_user.id
-        selected_data = user_data[user_id]["selected_currency"]
+        user_dict = await state.get_data()
+        selected_data = user_dict[user_id]["selected_currency"]
         today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
         if isinstance(event, CallbackQuery):
             await event.answer('')
@@ -228,51 +230,9 @@ async def send_today_handler(event: Message | CallbackQuery):
     except Exception as e:
         logger.error(e)
 
-@router.message(Command(commands=["exchange_rate"]))
-@router.callback_query(lambda c: c.data == get_lexicon_data("exchange_rate")["command"])
-async def send_tomorrow_schedule_handler(event: Message | CallbackQuery):
-    # Получаем user_id в зависимости от типа event
-    if isinstance(event, CallbackQuery):
-        user_id = event.from_user.id
-        message = event.message  # Для callback_query используем message из event
-    else:
-        user_id = event.from_user.id
-        message = event  # Для message используем сам event
-
-    # Проверяем, подписан ли пользователь на рассылку
-    if user_data[user_id].get("exchange_rate"):
-        job_id = f"interval_greeting_{user_id}"
-        text = get_lexicon_data("exchange_rate")['notification_false']
-
-        # Если задача существует, отменяем её
-        if scheduler.get_job(job_id):
-            try:
-                schedule_unsubscribe(job_id, scheduler)
-            except Exception as e:
-                logger.error(e)
-            finally:
-                await update_user_data_new(user_id, "exchange_rate", False)
-                await message.answer(text)
-                logger.info(f'{user_id} отписан от рассылки {job_id}')
-    else:
-        # Если пользователь не подписан, подписываем его
-        try:
-            await update_user_data_new(user_id, "exchange_rate", True)
-            selected_data = user_data[user_id]["selected_currency"]
-            tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d/%m/%Y")
-            if isinstance(event, CallbackQuery):
-                await event.answer('')
-            schedule_interval_greeting(user_id, scheduler, selected_data, tomorrow)
-            logger.info(f"Пользователь {user_id} подписался на рассылку 'Курс завтра'")
-        except Exception as e:
-            logger.error(f"Error in send_today_schedule_handler: {e}")
-        else:
-            await message.answer(text=get_lexicon_data("exchange_rate")['notification_true'])
-
-
 @router.message(Command(commands=["everyday"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("everyday")["command"])
-async def send_today_schedule_handler(event: Message | CallbackQuery):
+async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSMContext):
     # Получаем user_id в зависимости от типа event
     if isinstance(event, CallbackQuery):
         user_id = event.from_user.id
@@ -281,8 +241,10 @@ async def send_today_schedule_handler(event: Message | CallbackQuery):
         user_id = event.from_user.id
         message = event  # Для message используем сам event
 
+    user_dict = await state.get_data()
+
     # Проверяем, подписан ли пользователь на рассылку
-    if user_data[user_id].get("everyday"):
+    if user_dict[user_id].get("everyday"):
         job_id = f"daily_greeting_{user_id}"
         text = get_lexicon_data("everyday")['notification_false']
 
@@ -293,23 +255,26 @@ async def send_today_schedule_handler(event: Message | CallbackQuery):
             except Exception as e:
                 logger.error(e)
             finally:
-                await update_user_data_new(user_id, "everyday", False)
+                user_dict[user_id]["everyday"] = False
+                # await update_user_data_new(user_id, "everyday", False)
                 await message.answer(text)
                 logger.info(f'{user_id} отписан от рассылки {job_id}')
     else:
         # Если пользователь не подписан, подписываем его
         try:
-            await update_user_data_new(user_id, "everyday", True)
-            selected_data = user_data[user_id]["selected_currency"]
+            user_dict[user_id]["everyday"] = True
+            # await update_user_data_new(user_id, "everyday", True)
+            selected_data = user_dict[user_id]["selected_currency"]
             today = datetime.date.today().strftime("%d/%m/%Y")
             if isinstance(event, CallbackQuery):
                 await event.answer('')
             schedule_daily_greeting(user_id, scheduler, selected_data, today)
-            logger.info(f"Пользователь {user_id} подписался на рассылку 'Курс завтра'")
+            logger.info(f"Пользователь {user_id} подписался на ежедневную рассылку")
         except Exception as e:
             logger.error(f"Error in send_today_schedule_handler: {e}")
         else:
             await message.answer(text=get_lexicon_data("everyday")['notification_true'])
+    logger.info(user_dict)
 
 
 @router.message(Command(commands=["chart"]))
