@@ -4,8 +4,8 @@ import asyncio
 
 from aiogram import Bot, Dispatcher
 from config_data import config
-
-from handlers import user_handlers, user_handlers, user_remind
+from aiogram.fsm.storage.memory import MemoryStorage
+from handlers import user_handlers, user_remind
 from keyboards.menu import set_main_menu
 from logger.logging_settings import logger
 from service.CbRF import currency
@@ -13,6 +13,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Функция конфигурирования и запуска бота
 async def main():
+    # Инициализируем хранилище (создаем экземпляр класса MemoryStorage)
+    storage = MemoryStorage()
+
+    # Создаем "базу данных" пользователей
+    user_dict: dict[int, dict[str, str | int | bool]] = {}
+
     # Инициализируем бота
     bot = Bot(token=config.BOT_TOKEN)
     dp = Dispatcher()
@@ -22,6 +28,10 @@ async def main():
 
     # Настраиваем кнопку Menu
     await set_main_menu(bot)
+
+    # Передаем user_dict в обработчики
+    user_handlers.set_user_dict(user_dict)
+    user_remind.set_user_dict(user_dict)
 
     # Регистрируем роутеры в диспетчере
     dp.include_router(user_remind.router)

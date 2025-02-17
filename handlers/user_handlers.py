@@ -5,16 +5,16 @@ import time
 
 from aiogram import Router, F
 from aiogram.enums import ContentType
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.state import StatesGroup, State, default_state
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from config_data import config
-
+from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
@@ -37,41 +37,42 @@ def set_scheduler(sched):
     global scheduler
     scheduler = sched
 
+def set_user_dict(ud):
+    global user_dict
+    user_dict = ud
 
 # Константы
-START_COMMAND = "start"
 SELECT_RATE_COMMAND = "select_rate"
 TOGGLE_PREFIX = "toggle_"
 PAGE_PREFIX = "page_"
 LAST_BTN = "last_btn"
-
-
-# Состояния FSM
-class UserState(StatesGroup):
-    selected_buttons = State()  # Состояние для хранения выбранных кнопок
-    selected_names = State()  # Состояние для хранения выбранных названий
-    years = State()
-    graf = State()
-
 
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
     return next((item for item in LEXICON_GLOBAL if item["command"] == command), None)
 
 
-@router.message(Command(commands=START_COMMAND))
+@router.message(Command(commands="start"), StateFilter(default_state))
 async def process_start_handler(message: Message, state: FSMContext):
     """Обработчик команды /start."""
-    start_data = get_lexicon_data(START_COMMAND)
+    start_data = get_lexicon_data("start")
     if start_data:
         keyboard = create_inline_kb(1, start_data["btn"])
         await message.answer(text=start_data["text"], reply_markup=keyboard)
         await save_user_data(message)
+        await state.update_data(id = message.from_user.id)
+        await state.update_data(name=message.from_user.first_name)
+        await state.update_data(username=message.from_user.username)
+        await state.update_data(chat_id=message.chat.id)
+        await state.update_data(bot=message.from_user.is_bot)
+        await state.update_data(premium=message.from_user.is_premium)
+        user_data = await state.get_data()
+        logger.info(f"User data {message.from_user.id} has been saved: {user_data}")
     else:
         await message.answer("Ошибка: данные для команды /start не найдены.")
 
 
-@router.callback_query(lambda c: c.data == get_lexicon_data(START_COMMAND)["btn"])
+@router.callback_query(lambda c: c.data == get_lexicon_data("start")["btn"])
 @router.callback_query(lambda c: c.data == get_lexicon_data("select_rate")["command"])
 @router.message(Command(commands=[SELECT_RATE_COMMAND]))
 async def handle_currency_selection(event: Message | CallbackQuery, state: FSMContext):
@@ -463,18 +464,20 @@ async def in_banks(callback: CallbackQuery, state: FSMContext):
 
 # Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
 # кроме команд "/start" и "/help"
-@router.message()
-async def send_echo(message: Message):
-    await message.answer("Я не понимаю, воспользуйтесь меню команд")
+# @router.message()
+# async def send_echo(message: Message):
+#     await message.answer("Я не понимаю, воспользуйтесь меню команд")
 
-@router.message(F.content_type == ContentType.PHOTO)
-async def process_send_photo(message: Message):
-    await message.reply(text='Вы прислали фото')
+# @router.message(F.content_type == ContentType.PHOTO)
+# async def process_send_photo(message: Message):
+#     await message.reply(text='Вы прислали фото')
+#
+# @router.message(F.content_type == ContentType.VOICE)
+# async def process_send_photo(message: Message):
+#     await message.reply(text='Вы прислали звук')
+#
+# @router.message(F.content_type == ContentType.VIDEO)
+# async def process_send_photo(message: Message):
+#     await message.reply(text='Вы прислали видео')
 
-@router.message(F.content_type == ContentType.VOICE)
-async def process_send_photo(message: Message):
-    await message.reply(text='Вы прислали звук')
 
-@router.message(F.content_type == ContentType.VIDEO)
-async def process_send_photo(message: Message):
-    await message.reply(text='Вы прислали видео')

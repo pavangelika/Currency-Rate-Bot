@@ -26,6 +26,10 @@ def set_scheduler(sched):
     global scheduler
     scheduler = sched
 
+def set_user_dict(ud):
+    global user_dict
+    user_dict = ud
+
 @router.message(Command(commands=['user_remind']))
 async def process_user_remind(message: Message, state: FSMContext):
     """Шаг 1: Запрос текста напоминания."""
