@@ -160,20 +160,17 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
     select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == "select_rate"), None)
 
     # Получаем текущее состояние
-    user_state = await state.get_data()
-    selected_buttons = user_state.get("selected_buttons", set())
-    selected_names = user_state.get("selected_names", set())
+    user_dict = await state.get_data()
+    selected_buttons = user_dict.get("selected_buttons", set())
+    selected_names = user_dict.get("selected_names", set())
 
     if not selected_buttons:
         await callback.answer('')
         await callback.message.answer(select_rate_data["notification_false"])
-        # await update_user_data_new(user_id, "selected_currency", False)
-        await state.update_data(selected_currency=False)
     else:
         logger.info(f'Пользователь {user_id} выбрал валюту {selected_names}')
-        user_dict = await state.get_data()
+        user_dict[user_id]["selected_currency"] = selected_names
         logger.info(user_dict)
-        # await update_user_data_new(user_id, "selected_currency", selected_names)
         await callback.answer('')
 
         # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
@@ -204,8 +201,9 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
         # Загрузка данных о валютах
         currency_data = load_currency_data(currency_file_path)
-        updated_currencies = update_selected_currency(user_dict, user_id, currency_data)
-        user_dict[user_id]["selected_currency"] = updated_currencies
+        update_selected_currency(user_dict, user_id, currency_data)  # Обновляем user_dict
+    logger.info(user_dict)
+# удалить лишние данные с ключами
     logger.info(user_dict)
 
 
@@ -294,6 +292,7 @@ async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
 @router.message(UserState.years)
 async def end_year(message: Message, state: FSMContext):
     user_id = message.from_user.id
+    user_dict = await state.get_data()
     user_input = message.text.strip()  # Remove any leading/trailing whitespace
 
     # Check if the input is a command (starts with '/')
@@ -330,7 +329,7 @@ async def end_year(message: Message, state: FSMContext):
         await state.update_data(start=start, end=end)
 
         # Proceed with the rest of the logic
-        selected_data = user_data[user_id]["selected_currency"]
+        selected_data = user_dict[user_id]["selected_currency"]
         selected_data_list = []
         for sd in selected_data:
             result = dinamic_course(sd['id'])
@@ -373,7 +372,7 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
         return
 
     user_id = callback.from_user.id
-    selected_data = user_data[user_id]["selected_currency"]
+    selected_data = user_dict[user_id]["selected_currency"]
 
     selected_data_list = []
     for sd in selected_data:
@@ -387,8 +386,9 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(Command(commands=["menu"]))
-async def menu(message: Message):
+async def menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
+    user_dict = await state.get_data()
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
@@ -397,7 +397,7 @@ async def menu(message: Message):
         if item:
             if item["command"] in ["everyday"]:
                 # Проверяем значения в user_state
-                btn_key = "btn2" if user_data[user_id].get(
+                btn_key = "btn2" if user_dict[user_id].get(
                     "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                 btn_text = item.get(btn_key, button_data.get(btn_key))
             else:
