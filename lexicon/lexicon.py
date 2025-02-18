@@ -99,14 +99,6 @@ LEXICON_GLOBAL: list[dict[str, str]] = [
         "btn2": "Показать банки",
         "notification_true": "",
         "notification_false": ""
-    },
-    {
-        "command": "user_remind",
-        "name": "Напоминание о чем-то через заданный интервал времени",
-        "btn1": "Отписаться от ежедневной рассылки ",
-        "btn2": "Отписаться от рассылки изменений",
-        "notification_true": "",
-        "notification_false": ""
     }
 ]
 

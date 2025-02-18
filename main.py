@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from config_data import config
 from aiogram.fsm.storage.memory import MemoryStorage
-from handlers import user_handlers, user_remind
+from handlers import user_handlers
 from keyboards.menu import set_main_menu
 from logger.logging_settings import logger
 from service.CbRF import currency
@@ -24,11 +24,9 @@ async def main():
     await set_main_menu(bot)
 
     # Регистрируем роутеры в диспетчере
-    dp.include_router(user_remind.router)
     dp.include_router(user_handlers.router)
 
     # Передаем планировщик в обработчики
-    user_remind.set_scheduler(scheduler)
     user_handlers.set_scheduler(scheduler)
 
     # Настраиваем логирование
