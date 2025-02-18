@@ -6,13 +6,11 @@ import time
 from aiogram import Router, F
 from aiogram.enums import ContentType
 from aiogram.filters import Command, StateFilter
-from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State, default_state
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from config_data import config
 from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
@@ -21,7 +19,6 @@ from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_sel
 from lexicon.lexicon import CURRENCY, \
     LEXICON_GLOBAL, LEXICON_IN_MESSAGE
 from logger.logging_settings import logger
-# from save_files.user_storage import save_user_data, update_user_data_new, user_data
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
     graf_not_mobile
 
@@ -265,8 +262,9 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
             finally:
                 users[user_id]["everyday"] = False
                 # await update_user_data_new(user_id, "everyday", False)
+                await event.answer('')
                 await message.answer(text)
-                logger.info(f'{user_id} отписан от рассылки {job_id}')
+                logger.info(f'Scheduler has been deleted {job_id}')
     else:
         # Если пользователь не подписан, подписываем его
         try:
@@ -303,65 +301,60 @@ async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
 async def end_year(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user_dict = await state.get_data()
-    user_input = message.text.strip()  # Remove any leading/trailing whitespace
+    user_input = message.text.strip()  # Убираем лишние пробелы
 
+    # Если пользователь ввёл команду (начинается с "/"), очищаем состояние и выходим
+    # if user_input.startswith("/"):
+    #     await state.clear()
+    #     logger.info(f'User {user_id} input command {user_input}')
+    #     logger.info(f"users {users}")
+    #     logger.info(f'user_dict {user_dict}')
+    #     return
 
-    # Если пользователь ввёл команду (начинается с "/"), выходим из состояния
-    if user_input.startswith("/"):
-        await state.clear()  # Очищаем состояние
-        logger.info(f'User {user_id} input command {user_input}')
-        logger.info(f"users {users}")
-        logger.info(f'user_dict{user_dict}')
-        return  # Выходим из обработчика, чтобы команда обработалась отдельно
-
-    # Check if the input is a command (starts with '/')
-    if user_input.find('-'):
+    # Проверяем, это диапазон лет или один год
+    if '-' in user_input:
         years = user_input.split('-')
-
-        # Validate the input
-        if len(years) == 1:
-            # Single year
-            try:
-                start = int(years[0])
-                end = start
-            except ValueError:
-                await message.answer("Некорректный ввод. Пожалуйста, введите год в формате '2025'.")
-                return
-        elif len(years) == 2:
-            # Year range
-            try:
-                start = int(years[0])
-                end = int(years[1])
-            except ValueError:
-                await message.answer("Некорректный ввод. Пожалуйста, введите диапазон лет в формате '2022-2025'.")
-                return
-        else:
-            await message.answer("Некорректный ввод. Пожалуйста, введите данные в формате '2022-2025' или '2025'.")
+        if len(years) != 2:
+            await message.answer("Некорректный ввод. Введите диапазон лет в формате '2022-2025'.")
+            return
+        try:
+            start, end = map(int, years)
+        except ValueError:
+            await message.answer("Некорректный ввод. Используйте числа, например '2022-2025'.")
+            return
+    else:
+        try:
+            start = end = int(user_input)
+        except ValueError:
+            await message.answer("Некорректный ввод. Введите год в формате '2025'.")
             return
 
-        # Ensure that the start year is less than or equal to the end year
-        if start > end:
-            await message.answer("Начальный год должен быть меньше или равен конечному году.")
-            return
+    # Проверяем, что начальный год <= конечного
+    if start > end:
+        await message.answer("Начальный год должен быть меньше или равен конечному году.")
+        return
 
-        # Save the start and end years in the state
-        await state.update_data(start=start, end=end)
+    # Сохраняем данные в state
+    await state.update_data(start=start, end=end)
 
-        # Proceed with the rest of the logic
-        selected_data = users[user_id]["selected_currency"]
-        selected_data_list = []
-        for sd in selected_data:
-            result = dinamic_course(sd['id'])
-            name = sd['charCode']
-            result_data = parse_xml_data(result)
-            selected_data_list.append({"name": name, "value": result_data})
+    # Проверяем, есть ли у пользователя выбранные валюты
+    if user_id not in users or "selected_currency" not in users[user_id]:
+        await message.answer("Ошибка: у вас нет выбранных валют.")
+        return
 
-        group_for_graf = categorize_currencies(selected_data_list)
-        index = graf_mobile(group_for_graf, start, end)
-        logger.info(f"File index.html updated: {os.path.exists(index)}")
+    selected_data = users[user_id]["selected_currency"]
+    selected_data_list = []
+    for sd in selected_data:
+        result = dinamic_course(sd['id'])
+        name = sd['charCode']
+        result_data = parse_xml_data(result)
+        selected_data_list.append({"name": name, "value": result_data})
 
+    group_for_graf = categorize_currencies(selected_data_list)
+    index = graf_mobile(group_for_graf, start, end)
+    logger.info(f"File index.html updated: {os.path.exists(index)}")
 
-    # Create buttons for Web App
+    # Создаем кнопки
     button_mobile = InlineKeyboardButton(
         text="График на телефоне",
         web_app=WebAppInfo(url=f"{config.GITHUB_PAGES}?v={int(time.time())}")
@@ -375,7 +368,7 @@ async def end_year(message: Message, state: FSMContext):
         inline_keyboard=[[button_mobile], [button_pc]]
     )
 
-    # Send the message with the buttons
+    # Отправляем сообщение
     await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
 
 
@@ -389,7 +382,8 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
     end = data.get("end")
 
     if start is None or end is None:
-        logger.error("Error. Btn_graf_not_mobile: не удалось получить диапазон лет.")
+        await callback.message.answer("Введите еще раз диапазон лет (например, 2022-2025 или 2025):")
+        await state.set_state(UserState.years)
         return
 
     user_id = callback.from_user.id
@@ -404,14 +398,12 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
 
     group_for_graf = categorize_currencies(selected_data_list)
     graf_not_mobile(group_for_graf, start, end)
+    await state.clear()
 
 
-@router.message(Command(commands=["menu"]))
-@router.message(F.data == "/menu")
+@router.message(Command(commands=["menu"]) or F.data == "/menu" or F.data == "menu")
 async def menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    # logger.info(f"in menu {user_dict}")
-    # user_dict = await state.get_data()
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
@@ -436,8 +428,8 @@ async def menu(message: Message, state: FSMContext):
 async def in_banks(callback: CallbackQuery, state: FSMContext):
     main = InlineKeyboardMarkup(inline_keyboard=[  # Заместо keyboard, теперь inline_keyboard
         [InlineKeyboardButton(text='Курс валют в банках', url='https://1000bankov.ru/kurs/')],
-        [InlineKeyboardButton(text='Следить за курсом продажи', callback_data='look_for_sale')],
-        [InlineKeyboardButton(text='Следить за курсом покупки', callback_data='look_for_buy')]
+        # [InlineKeyboardButton(text='Следить за курсом продажи', callback_data='look_for_sale')],
+        # [InlineKeyboardButton(text='Следить за курсом покупки', callback_data='look_for_buy')]
     ])
 
     await callback.answer("")
