@@ -25,7 +25,6 @@ from logger.logging_settings import logger
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
     graf_not_mobile
 
-
 # Инициализируем роутер уровня модуля
 router = Router()
 
@@ -35,6 +34,15 @@ scheduler = None
 def set_scheduler(sched):
     global scheduler
     scheduler = sched
+
+
+user_dict_global = {}  # Глобальный словарь пользователей
+
+async def update_user_dict(state: FSMContext):
+    global user_dict_global
+    data = await state.get_data()
+    if isinstance(data, dict):  # Проверяем, что данные из state — словарь
+        user_dict_global.update(data)  # Обновляем глобальный словарь
 
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
@@ -63,10 +71,12 @@ async def process_start_handler(message: Message, state: FSMContext):
         await state.update_data({message.from_user.id: user_data})
 
         # Логируем данные пользователя
-        user_dict = await state.get_data()
-        logger.info(f"User data {message.from_user.id} has been saved: {user_dict}")
+        await state.get_data()
+        await update_user_dict(state)
+        logger.info(f"User {message.from_user.id} has been added")
+        logger.info(f"User_dict_global has been updated: {user_dict_global}")
     else:
-        await message.answer("Ошибка: данные для команды /start не найдены.")
+        await message.answer("Errors: no data found for the /start command")
 
 
 @router.callback_query(F.data == get_lexicon_data("start")["btn"])
@@ -105,7 +115,6 @@ async def handle_currency_selection(event: Message | CallbackQuery, state: FSMCo
 @router.callback_query(F.data.startswith("toggle_") | F.data.startswith("page_"))
 async def handle_toggle_and_pagination(callback: CallbackQuery, state: FSMContext):
     """Обработчик переключения состояния кнопок и пагинации."""
-    user_id = callback.from_user.id
     data = callback.data
 
     # Получаем текущее состояние
@@ -168,9 +177,8 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         await callback.answer('')
         await callback.message.answer(select_rate_data["notification_false"])
     else:
-        logger.info(f'Пользователь {user_id} выбрал валюту {selected_names}')
+        logger.info(f'User {user_id} has been selected currency: {selected_names}')
         user_dict[user_id]["selected_currency"] = selected_names
-        logger.info(user_dict)
         await callback.answer('')
 
         # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
@@ -192,19 +200,21 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
                         [InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
 
         # Отправляем сообщение с клавиатурой
-        # await callback.message.answer("Выберите действие:", reply_markup=keyboard)
-
         await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}",
                                       reply_markup=keyboard)
 
         # Путь к файлу (можно использовать абсолютный путь)
         currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
+
         # Загрузка данных о валютах
         currency_data = load_currency_data(currency_file_path)
         update_selected_currency(user_dict, user_id, currency_data)  # Обновляем user_dict
-    logger.info(user_dict)
+
+
 # удалить лишние данные с ключами
-    logger.info(user_dict)
+    await state.clear()
+    logger.info(f"user_dict_global {user_dict_global}")
+    logger.info(f'user_dict{user_dict}')
 
 
 @router.message(Command(commands=["today"]))
@@ -216,8 +226,8 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
     """
     try:
         user_id = event.from_user.id
-        user_dict = await state.get_data()
-        selected_data = user_dict[user_id]["selected_currency"]
+        # user_dict = await state.get_data()
+        selected_data = user_dict_global[user_id]["selected_currency"]
         today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
         if isinstance(event, CallbackQuery):
             await event.answer('')
@@ -239,10 +249,10 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
         user_id = event.from_user.id
         message = event  # Для message используем сам event
 
-    user_dict = await state.get_data()
+    # user_dict = await state.get_data()
 
     # Проверяем, подписан ли пользователь на рассылку
-    if user_dict[user_id].get("everyday"):
+    if user_dict_global[user_id].get("everyday"):
         job_id = f"daily_greeting_{user_id}"
         text = get_lexicon_data("everyday")['notification_false']
 
@@ -253,16 +263,16 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
             except Exception as e:
                 logger.error(e)
             finally:
-                user_dict[user_id]["everyday"] = False
+                user_dict_global[user_id]["everyday"] = False
                 # await update_user_data_new(user_id, "everyday", False)
                 await message.answer(text)
                 logger.info(f'{user_id} отписан от рассылки {job_id}')
     else:
         # Если пользователь не подписан, подписываем его
         try:
-            user_dict[user_id]["everyday"] = True
+            user_dict_global[user_id]["everyday"] = True
             # await update_user_data_new(user_id, "everyday", True)
-            selected_data = user_dict[user_id]["selected_currency"]
+            selected_data = user_dict_global[user_id]["selected_currency"]
             today = datetime.date.today().strftime("%d/%m/%Y")
             if isinstance(event, CallbackQuery):
                 await event.answer('')
@@ -272,11 +282,11 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
             logger.error(f"Error in send_today_schedule_handler: {e}")
         else:
             await message.answer(text=get_lexicon_data("everyday")['notification_true'])
-    logger.info(user_dict)
+    logger.info(f"user_dict_global {user_dict_global}")
 
 
 @router.message(Command(commands=["chart"]))
-@router.callback_query(lambda c: c.data == get_lexicon_data("chart")["command"])
+@router.callback_query(F.data == get_lexicon_data("chart")["command"])
 async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
     # Получаем user_id в зависимости от типа event
     if isinstance(event, CallbackQuery):
@@ -294,6 +304,15 @@ async def end_year(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user_dict = await state.get_data()
     user_input = message.text.strip()  # Remove any leading/trailing whitespace
+
+
+    # Если пользователь ввёл команду (начинается с "/"), выходим из состояния
+    if user_input.startswith("/"):
+        await state.clear()  # Очищаем состояние
+        logger.info(f'User {user_id} input command {user_input}')
+        logger.info(f"user_dict_global {user_dict_global}")
+        logger.info(f'user_dict{user_dict}')
+        return  # Выходим из обработчика, чтобы команда обработалась отдельно
 
     # Check if the input is a command (starts with '/')
     if user_input.find('-'):
@@ -329,7 +348,7 @@ async def end_year(message: Message, state: FSMContext):
         await state.update_data(start=start, end=end)
 
         # Proceed with the rest of the logic
-        selected_data = user_dict[user_id]["selected_currency"]
+        selected_data = user_dict_global[user_id]["selected_currency"]
         selected_data_list = []
         for sd in selected_data:
             result = dinamic_course(sd['id'])
@@ -340,6 +359,7 @@ async def end_year(message: Message, state: FSMContext):
         group_for_graf = categorize_currencies(selected_data_list)
         index = graf_mobile(group_for_graf, start, end)
         logger.info(f"File index.html updated: {os.path.exists(index)}")
+
 
     # Create buttons for Web App
     button_mobile = InlineKeyboardButton(
@@ -360,10 +380,11 @@ async def end_year(message: Message, state: FSMContext):
 
 
 
-@router.callback_query(lambda c: c.data == "pc_graph")
+@router.callback_query(F.data == "pc_graph")
 async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
     await callback.answer('')
     data = await state.get_data()
+    # user_dict = await state.get_data()
     start = data.get("start")
     end = data.get("end")
 
@@ -372,7 +393,7 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
         return
 
     user_id = callback.from_user.id
-    selected_data = user_dict[user_id]["selected_currency"]
+    selected_data = user_dict_global[user_id]["selected_currency"]
 
     selected_data_list = []
     for sd in selected_data:
@@ -386,9 +407,11 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(Command(commands=["menu"]))
+@router.message(F.data == "/menu")
 async def menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    user_dict = await state.get_data()
+    # logger.info(f"in menu {user_dict}")
+    # user_dict = await state.get_data()
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
@@ -397,7 +420,7 @@ async def menu(message: Message, state: FSMContext):
         if item:
             if item["command"] in ["everyday"]:
                 # Проверяем значения в user_state
-                btn_key = "btn2" if user_dict[user_id].get(
+                btn_key = "btn2" if user_dict_global[user_id].get(
                     "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                 btn_text = item.get(btn_key, button_data.get(btn_key))
             else:
@@ -409,7 +432,7 @@ async def menu(message: Message, state: FSMContext):
 
     await message.answer("Выберите действие:", reply_markup=keyboard)
 
-@router.callback_query(lambda c: c.data == "in_banks")
+@router.callback_query(F.data == "in_banks")
 async def in_banks(callback: CallbackQuery, state: FSMContext):
     main = InlineKeyboardMarkup(inline_keyboard=[  # Заместо keyboard, теперь inline_keyboard
         [InlineKeyboardButton(text='Курс валют в банках', url='https://1000bankov.ru/kurs/')],
