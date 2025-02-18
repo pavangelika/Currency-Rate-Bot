@@ -36,13 +36,13 @@ def set_scheduler(sched):
     scheduler = sched
 
 
-user_dict_global = {}  # Глобальный словарь пользователей
+users = {}  # Глобальный словарь пользователей
 
 async def update_user_dict(state: FSMContext):
-    global user_dict_global
+    global users
     data = await state.get_data()
     if isinstance(data, dict):  # Проверяем, что данные из state — словарь
-        user_dict_global.update(data)  # Обновляем глобальный словарь
+        users.update(data)  # Обновляем глобальный словарь
 
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
@@ -74,7 +74,7 @@ async def process_start_handler(message: Message, state: FSMContext):
         await state.get_data()
         await update_user_dict(state)
         logger.info(f"User {message.from_user.id} has been added")
-        logger.info(f"User_dict_global has been updated: {user_dict_global}")
+        logger.info(f"Users has been updated: {users}")
     else:
         await message.answer("Errors: no data found for the /start command")
 
@@ -213,8 +213,8 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
 
 # удалить лишние данные с ключами
     await state.clear()
-    logger.info(f"user_dict_global {user_dict_global}")
-    logger.info(f'user_dict{user_dict}')
+    logger.info(f"Users has been updated: {users}")
+    logger.info(f'User_dict{user_dict}')
 
 
 @router.message(Command(commands=["today"]))
@@ -227,14 +227,14 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
     try:
         user_id = event.from_user.id
         # user_dict = await state.get_data()
-        selected_data = user_dict_global[user_id]["selected_currency"]
+        selected_data = users[user_id]["selected_currency"]
         today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
         if isinstance(event, CallbackQuery):
             await event.answer('')
             await event.message.answer(course_today(selected_data, today))
         else:  # isinstance(event, Message)
             await event.answer(course_today(selected_data, today))
-        logger.info(f"Пользователь {user_id} вызвал комманду 'Курс сегодня'")
+        logger.info(f"User {user_id} has selected the '/today' command'")
     except Exception as e:
         logger.error(e)
 
@@ -252,7 +252,7 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
     # user_dict = await state.get_data()
 
     # Проверяем, подписан ли пользователь на рассылку
-    if user_dict_global[user_id].get("everyday"):
+    if users[user_id].get("everyday"):
         job_id = f"daily_greeting_{user_id}"
         text = get_lexicon_data("everyday")['notification_false']
 
@@ -263,26 +263,26 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
             except Exception as e:
                 logger.error(e)
             finally:
-                user_dict_global[user_id]["everyday"] = False
+                users[user_id]["everyday"] = False
                 # await update_user_data_new(user_id, "everyday", False)
                 await message.answer(text)
                 logger.info(f'{user_id} отписан от рассылки {job_id}')
     else:
         # Если пользователь не подписан, подписываем его
         try:
-            user_dict_global[user_id]["everyday"] = True
+            users[user_id]["everyday"] = True
             # await update_user_data_new(user_id, "everyday", True)
-            selected_data = user_dict_global[user_id]["selected_currency"]
+            selected_data = users[user_id]["selected_currency"]
             today = datetime.date.today().strftime("%d/%m/%Y")
             if isinstance(event, CallbackQuery):
                 await event.answer('')
             schedule_daily_greeting(user_id, scheduler, selected_data, today)
-            logger.info(f"Пользователь {user_id} подписался на ежедневную рассылку")
+            logger.info(f"User {user_id} has subscribed to the daily newsletter")
         except Exception as e:
             logger.error(f"Error in send_today_schedule_handler: {e}")
         else:
             await message.answer(text=get_lexicon_data("everyday")['notification_true'])
-    logger.info(f"user_dict_global {user_dict_global}")
+    logger.info(f"Users has been updated: {users}")
 
 
 @router.message(Command(commands=["chart"]))
@@ -310,7 +310,7 @@ async def end_year(message: Message, state: FSMContext):
     if user_input.startswith("/"):
         await state.clear()  # Очищаем состояние
         logger.info(f'User {user_id} input command {user_input}')
-        logger.info(f"user_dict_global {user_dict_global}")
+        logger.info(f"users {users}")
         logger.info(f'user_dict{user_dict}')
         return  # Выходим из обработчика, чтобы команда обработалась отдельно
 
@@ -348,7 +348,7 @@ async def end_year(message: Message, state: FSMContext):
         await state.update_data(start=start, end=end)
 
         # Proceed with the rest of the logic
-        selected_data = user_dict_global[user_id]["selected_currency"]
+        selected_data = users[user_id]["selected_currency"]
         selected_data_list = []
         for sd in selected_data:
             result = dinamic_course(sd['id'])
@@ -389,11 +389,11 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
     end = data.get("end")
 
     if start is None or end is None:
-        logger.error("Ошибка btn_graf_not_mobile: не удалось получить диапазон лет.")
+        logger.error("Error. Btn_graf_not_mobile: не удалось получить диапазон лет.")
         return
 
     user_id = callback.from_user.id
-    selected_data = user_dict_global[user_id]["selected_currency"]
+    selected_data = users[user_id]["selected_currency"]
 
     selected_data_list = []
     for sd in selected_data:
@@ -420,7 +420,7 @@ async def menu(message: Message, state: FSMContext):
         if item:
             if item["command"] in ["everyday"]:
                 # Проверяем значения в user_state
-                btn_key = "btn2" if user_dict_global[user_id].get(
+                btn_key = "btn2" if users[user_id].get(
                     "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                 btn_text = item.get(btn_key, button_data.get(btn_key))
             else:
