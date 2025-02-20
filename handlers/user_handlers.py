@@ -48,6 +48,7 @@ def get_lexicon_data(command: str):
 @router.message(Command(commands="start"), StateFilter(default_state))
 async def process_start_handler(message: Message, state: FSMContext):
     """Обработчик команды /start."""
+    await state.clear()
     start_data = get_lexicon_data("start")
     if start_data:
         keyboard = create_inline_kb(1, start_data["btn"])
@@ -285,7 +286,7 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
 
 @router.message(Command(commands=["chart"]))
 @router.callback_query(F.data == get_lexicon_data("chart")["command"])
-async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
+async def request_year(event: Message | CallbackQuery, state: FSMContext):
     # Получаем user_id в зависимости от типа event
     if isinstance(event, CallbackQuery):
         await event.answer('')
@@ -296,22 +297,21 @@ async def send_html_graph(event: Message | CallbackQuery, state: FSMContext):
     await message.answer("Введите диапазон лет (например, 2022-2025 или 2025):")
     await state.set_state(UserState.years)
 
-
 @router.message(UserState.years)
-async def end_year(message: Message, state: FSMContext):
+async def process_year(message: Message, state: FSMContext):
+    """Обрабатывает введенный диапазон лет и выводит клавиатуру."""
     user_id = message.from_user.id
     user_dict = await state.get_data()
-    user_input = message.text.strip()  # Убираем лишние пробелы
+    user_input = message.text.strip()
+    current_year = datetime.date.today().year  # Получаем текущий год
 
-    # Если пользователь ввёл команду (начинается с "/"), очищаем состояние и выходим
-    # if user_input.startswith("/"):
-    #     await state.clear()
-    #     logger.info(f'User {user_id} input command {user_input}')
-    #     logger.info(f"users {users}")
-    #     logger.info(f'user_dict {user_dict}')
-    #     return
+    # Если пользователь ввел команду (начинается с "/"), очищаем состояние и выходим
+    if user_input.startswith("/"):
+        await state.clear()
+        logger.info(f'User {user_id} input command {user_input}')
+        return
 
-    # Проверяем, это диапазон лет или один год
+    # Определяем, введен один год или диапазон
     if '-' in user_input:
         years = user_input.split('-')
         if len(years) != 2:
@@ -329,9 +329,13 @@ async def end_year(message: Message, state: FSMContext):
             await message.answer("Некорректный ввод. Введите год в формате '2025'.")
             return
 
-    # Проверяем, что начальный год <= конечного
+    # Проверяем корректность диапазона лет
     if start > end:
-        await message.answer("Начальный год должен быть меньше или равен конечному году.")
+        await message.answer("Ошибка. Начальный год не может быть больше конечного.")
+        return
+
+    if end > current_year:
+        await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
         return
 
     # Сохраняем данные в state
@@ -342,6 +346,7 @@ async def end_year(message: Message, state: FSMContext):
         await message.answer("Ошибка: у вас нет выбранных валют.")
         return
 
+    # Генерация данных для графика
     selected_data = users[user_id]["selected_currency"]
     selected_data_list = []
     for sd in selected_data:
@@ -403,6 +408,7 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Command(commands=["menu"]) or F.data == "/menu" or F.data == "menu")
 async def menu(message: Message, state: FSMContext):
+    await state.clear()  # Очистка состояния
     user_id = message.from_user.id
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
@@ -412,9 +418,15 @@ async def menu(message: Message, state: FSMContext):
         if item:
             if item["command"] in ["everyday"]:
                 # Проверяем значения в user_state
-                btn_key = "btn2" if users[user_id].get(
-                    "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
-                btn_text = item.get(btn_key, button_data.get(btn_key))
+                try:
+                    btn_key = "btn2" if users[user_id].get(
+                        "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
+                    # btn_text = item.get(btn_key, button_data.get(btn_key))
+                except KeyError as e:
+                    btn_key = "btn1"
+                finally:
+                    btn_text = item.get(btn_key, button_data.get(btn_key))
+
             else:
                 btn_text = item.get("btn", button_data.get("btn"))
 
@@ -460,4 +472,13 @@ async def in_banks(callback: CallbackQuery, state: FSMContext):
 # async def process_send_photo(message: Message):
 #     await message.reply(text='Вы прислали видео')
 
+
+@router.message(Command("users"))
+async def info(message: Message, state: FSMContext):
+    logger.info(users)
+
+@router.message(Command("user_dict"))
+async def info(message: Message, state: FSMContext):
+    user_dict = await state.get_data()
+    logger.info(user_dict)
 
