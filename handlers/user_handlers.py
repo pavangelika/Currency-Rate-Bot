@@ -12,6 +12,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
 from config_data import config
+
+from database.db import create_db_pool, add_user_to_db, create_table
 from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
@@ -31,6 +33,14 @@ scheduler = None
 def set_scheduler(sched):
     global scheduler
     scheduler = sched
+
+# Инициализируем пул подключений к базе данных
+db_pool = None
+
+async def init_db():
+    global db_pool
+    db_pool = await create_db_pool()
+    await create_table(db_pool)
 
 
 users = {}  # Глобальный словарь пользователей
@@ -55,15 +65,21 @@ async def process_start_handler(message: Message, state: FSMContext):
         await message.answer(text=start_data["text"], reply_markup=keyboard)
         # Создаем словарь с данными пользователя
         user_data = {
-            "id": message.from_user.id,
+            "user_id": message.from_user.id,
             "name": message.from_user.first_name,
             "username": message.from_user.username,
             "chat_id": message.chat.id,
-            "bot": message.from_user.is_bot,
-            "premium": message.from_user.is_premium,
+            "is_bot": message.from_user.is_bot,
+            "is_premium": message.from_user.is_premium,
             "date_start": message.date.strftime("%d/%m/%Y %H:%M"),
             "timezone": message.date.tzname() or "UTC",  # Если tzname() возвращает None, используем "UTC"
         }
+
+        # Добавляем пользователя в базу данных
+        try:
+            await add_user_to_db(db_pool, user_data)
+        except Exception as e:
+            logger.error(e)
 
         # Сохраняем данные в FSMContext
         await state.update_data({message.from_user.id: user_data})
