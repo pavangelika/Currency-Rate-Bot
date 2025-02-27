@@ -1,46 +1,54 @@
-version: '3'
-
-services:
-  postgres-inv:
-    image: postgres
-    container_name: postgres-inv
-    ports:
-      - 5432:5432
-    environment:
-      POSTGRES_PASSWORD: pgpass
-
-#version: '3.8'
+#version: '3'
 #
 #services:
-#  postgres:
+#  postgres-inv:
 #    image: postgres
-#    container_name: postgres-container
-#    environment:
-#      POSTGRES_USER: myuser
-#      POSTGRES_PASSWORD: mypassword
-#      POSTGRES_DB: mydatabase
+#    container_name: postgres-inv
 #    ports:
-#      - "5432:5432"
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#    restart: always
-#
-#  bot:
-#    build: .
-#    container_name: bot-container
-#    depends_on:
-#      - postgres
+#      - 5432:5432
 #    environment:
-#      POSTGRES_HOST: postgres  # Имя сервиса PostgreSQL
-#      POSTGRES_PORT: 5432
-#      POSTGRES_USER: myuser
-#      POSTGRES_PASSWORD: mypassword
-#      POSTGRES_DB: mydatabase
-#    restart: always
-#
-#volumes:
-#  postgres_data:
+#      POSTGRES_PASSWORD: pgpass
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres
+    container_name: postgres-container
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  bot:
+    build: .
+    container_name: bot-container
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres  # Имя сервиса PostgreSQL
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    restart: always
+
+volumes:
+  postgres_data:
 
 #cd C:\ANGEL\MyProjects\CurrencyRate
 #docker-compose up -d
+#docker exec -it postgres-container psql -U myuser -d mydatabase
+#\dt
+#\d
+#SELECT * FROM users;
+#TRUNCATE TABLE users RESTART IDENTITY CASCADE;
+
+
 #docker-compose down
+#docker-compose build --no-cache

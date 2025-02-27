@@ -46,7 +46,8 @@ def setup_logging(log_file: str = "log/mylog.log", error_log_file: str = "log/er
     logger.addHandler(console_handler)
 
     # Обработчик для основного файла логирования
-    file_handler = create_handler(logging.FileHandler, log_level, log_formatter, log_file, 'w')
+    file_handler = create_handler(logging.FileHandler, log_level, log_formatter, log_file, 'a')
+    # file_handler = create_handler(logging.FileHandler, log_level, log_formatter, log_file, 'w')
     logger.addHandler(file_handler)
 
     # Обработчик для файла ошибок

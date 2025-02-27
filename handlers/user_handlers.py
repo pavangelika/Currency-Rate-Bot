@@ -13,7 +13,8 @@ from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
 from config_data import config
 
-from database.db import create_db_pool, add_user_to_db, create_table
+from database.db import create_db_pool, add_user_to_db, create_table, update_user
+from handlers import selected_currency
 from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
@@ -224,6 +225,11 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         currency_data = load_currency_data(currency_file_path)
         update_selected_currency(user_dict, user_id, currency_data)  # Обновляем user_dict
 
+        # Добавляем пользователя в базу данных
+        try:
+            await update_user(db_pool, user_id, currency_data)
+        except Exception as e:
+            logger.error(e)
 
 # удалить лишние данные с ключами
     await state.clear()
@@ -277,6 +283,7 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
             except Exception as e:
                 logger.error(e)
             finally:
+                await update_user(db_pool, user_id, everyday=False)
                 users[user_id]["everyday"] = False
                 # await update_user_data_new(user_id, "everyday", False)
                 await event.answer('')
@@ -285,6 +292,7 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
     else:
         # Если пользователь не подписан, подписываем его
         try:
+            await update_user(db_pool, user_id, everyday=True)
             users[user_id]["everyday"] = True
             # await update_user_data_new(user_id, "everyday", True)
             selected_data = users[user_id]["selected_currency"]
@@ -493,8 +501,5 @@ async def in_banks(callback: CallbackQuery, state: FSMContext):
 async def info(message: Message, state: FSMContext):
     logger.info(users)
 
-@router.message(Command("user_dict"))
-async def info(message: Message, state: FSMContext):
-    user_dict = await state.get_data()
-    logger.info(user_dict)
+
 

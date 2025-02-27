@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 
@@ -30,9 +31,18 @@ async def create_table(pool):
                     is_bot BOOLEAN NOT NULL,
                     is_premium BOOLEAN NOT NULL,
                     date_start TIMESTAMP NOT NULL,
-                    timezone TEXT NOT NULL
+                    timezone TEXT NOT NULL,
+                    currency_data JSONB DEFAULT '[]',
+                    everyday BOOLEAN DEFAULT FALSE,
+                    location JSONB DEFAULT '[]',
                 );
             """)
+            # ALTER TABLE users ADD COLUMN currency_data JSONB DEFAULT '[]';
+            # ALTER TABLE users ADD COLUMN everyday BOOLEAN DEFAULT FALSE;
+            # ALTER TABLE users ADD COLUMN location JSONB DEFAULT '[]';
+
+
+
             logger.info("Table 'users' has been created or already exists.")
     except Exception as e:
         logger.error(f"Error creating table 'users': {e}")
@@ -72,17 +82,29 @@ async def add_user_to_db(pool, user_data):
     except Exception as e:
         logger.error(f"Error adding user to the database: {e}")
 
-# Функция для обновления данных пользователя
-async def update_user_in_db(pool, user_id, updated_data):
+
+async def update_user(pool, user_id, selected_currency=None, everyday=None):
     try:
         async with pool.acquire() as connection:
-            # Обновление информации о пользователе
-            set_clause = ", ".join([f"{key} = ${index + 2}" for index, key in enumerate(updated_data.keys())])
-            query = f"UPDATE users SET {set_clause} WHERE user_id = $1"
-            await connection.execute(query, user_id, *updated_data.values())
-            logger.info(f"User {user_id} data updated.")
+            update_fields = []
+            update_values = []
+
+            if selected_currency is not None:
+                update_fields.append("selected_currency = $1")
+                update_values.append(json.dumps(selected_currency))
+
+            if everyday is not None:
+                update_fields.append("everyday = $2")
+                update_values.append(everyday)
+
+            if update_fields:  # Если есть что обновлять
+                update_values.append(user_id)
+                query = f"UPDATE users SET {', '.join(update_fields)} WHERE user_id = ${len(update_values)}"
+                await connection.execute(query, *update_values)
+
+                logger.info(f"User {user_id} updated successfully.")
     except Exception as e:
-        logger.error(f"Error updating user {user_id} in the database: {e}")
+        logger.error(f"Error updating user {user_id}: {e}")
 
 # Функция для получения пользователя по ID
 async def get_user_by_id(pool, user_id):

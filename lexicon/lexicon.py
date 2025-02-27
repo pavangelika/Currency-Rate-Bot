@@ -24,8 +24,7 @@ CURRENCY = create_buttons_from_json_file(file_path)
 LEXICON_MENU: list[dict[str, str]] = [
     {"command": "start", "name": "Сброс всех параметров. Начать заново"},
     {"command": "menu", "name": "Действия с ботом"},
-    {"command": "users", "name": "users"},
-    {"command": "user_dict", "name": "user_dict"}
+    {"command": "users", "name": "users"}
 ]
 
 LEXICON_IN_MESSAGE: list[dict[str, str]] = [
