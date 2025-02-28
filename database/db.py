@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from xmlrpc.client import boolean
 
 import asyncpg
 from config_data import config
@@ -90,8 +91,17 @@ async def update_user(pool, user_id, selected_currency=None, everyday=None):
                 update_values.append(currency_strings)  # Передаем список JSON-строк в PostgreSQL
 
             if everyday is not None:
-                update_fields.append("everyday = $2")
-                update_values.append(everyday)  # Здесь everyday должен быть булевым значением True или False
+                # Преобразуем значение everyday в булевое значение, если оно не является таковым
+                if isinstance(everyday, bool):
+                    update_fields.append("everyday = $2")
+                    update_values.append(everyday)
+                elif isinstance(everyday, int):
+                    # Преобразуем числа 0/1 в False/True
+                    update_fields.append("everyday = $2")
+                    update_values.append(bool(everyday))  # Преобразуем в True или False
+                else:
+                    logger.error(f"Invalid value for 'everyday': {everyday}. Expected a boolean or integer.")
+                    return
 
             if update_fields:
                 update_values.append(user_id)
