@@ -546,6 +546,9 @@ async def my_currency(message: Message, state: FSMContext):
 
     select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == "select_rate"), None)
 
+    # Обрабатываем список валют, добавляя их на новую строку
+    formatted_result = "\n".join(formatted_result.split(", "))  # Разбиваем на строки по запятой и пробелу
+
     # Отправляем сообщение с клавиатурой
     await message.answer(f"{select_rate_data['notification_true']}\n{formatted_result}", reply_markup=keyboard)
 
