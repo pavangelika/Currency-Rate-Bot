@@ -1,13 +1,11 @@
-import datetime
 import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
-import requests
 
 from logger.logging_settings import logger
+
 
 def currency():
     """ Сохранение текущих кодов валют с сайта ЦБ РФ в currency_code.json """

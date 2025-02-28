@@ -33,6 +33,8 @@ def update_selected_currency(user_data, user_id, currency_data):
     # Обновляем selected_currency
     user_data[user_id]['selected_currency'] = updated_currencies
 
+
+
 def load_currency_data(file_path):
     """
     Загружает данные о валютах из JSON-файла.

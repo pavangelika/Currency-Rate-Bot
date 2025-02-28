@@ -3,11 +3,13 @@
 #services:
 #  postgres-inv:
 #    image: postgres
-#    container_name: postgres-inv
+#    container_name: postgres-container
 #    ports:
 #      - 5432:5432
 #    environment:
-#      POSTGRES_PASSWORD: pgpass
+#      POSTGRES_USER: myuser
+#      POSTGRES_PASSWORD: mypassword
+#      POSTGRES_DB: mydatabase
 
 version: '3.8'
 
@@ -25,30 +27,34 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: always
 
-  bot:
-    build: .
-    container_name: bot-container
-    depends_on:
-      - postgres
-    environment:
-      POSTGRES_HOST: postgres  # Имя сервиса PostgreSQL
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydatabase
-    restart: always
+#  bot:
+#    build: .
+#    container_name: bot-container
+#    depends_on:
+#      - postgres
+#    environment:
+#      POSTGRES_HOST: postgres  # Имя сервиса PostgreSQL
+#      POSTGRES_PORT: 5432
+#      POSTGRES_USER: myuser
+#      POSTGRES_PASSWORD: mypassword
+#      POSTGRES_DB: mydatabase
+#    restart: always
+#    entrypoint: /bin/bash -c "rm -rf /root/.cache/* && exec python main.py"
 
 volumes:
   postgres_data:
 
 #cd C:\ANGEL\MyProjects\CurrencyRate
 #docker-compose up -d
+#dosker ps
 #docker exec -it postgres-container psql -U myuser -d mydatabase
 #\dt
-#\d
+#\d users
 #SELECT * FROM users;
 #TRUNCATE TABLE users RESTART IDENTITY CASCADE;
-
+#DROP TABLE IF EXISTS users, other_table CASCADE;
 
 #docker-compose down
 #docker-compose build --no-cache
+
+
