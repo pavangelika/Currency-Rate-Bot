@@ -196,7 +196,6 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
             if item:
                 if item["command"] in ["everyday"]:
                     everyday = await get_everyday(db_pool, user_id)
-                    logger.info(f'из базы: {everyday}')
                     btn_key = "btn2" if everyday == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                     btn_text = item.get(btn_key, button_data.get(btn_key))
                 else:
@@ -224,9 +223,7 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         try:
             await update_user(db_pool, user_id, selected_currency=updated_currencies)
             db_result = await get_selected_currency(db_pool, user_id)
-            logger.info(f"БД selected_currency={db_result}")
             formatted_result = await format_currency_from_db(db_result)
-            logger.info(formatted_result)
         except Exception as e:
             logger.error(e)
 
@@ -516,7 +513,6 @@ async def my_currency(message: Message, state: FSMContext):
 
     # Получаем данные из базы данных
     db_result = await get_selected_currency(db_pool, user_id)
-    logger.info(f"БД selected_currency={db_result}")
 
     # Форматируем результат
     formatted_result = await format_currency_from_db(db_result)
@@ -526,8 +522,6 @@ async def my_currency(message: Message, state: FSMContext):
         logger.error("Formatted result is empty or None!")
         formatted_result = "Не удалось получить данные о валютах."
 
-    logger.info(f"Formatted currency result: {formatted_result}")
-
     # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
@@ -536,7 +530,6 @@ async def my_currency(message: Message, state: FSMContext):
         if item:
             if item["command"] in ["everyday"]:
                 everyday = await get_everyday(db_pool, user_id)
-                logger.info(f'из базы: {everyday}')
                 btn_key = "btn2" if everyday == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                 btn_text = item.get(btn_key, button_data.get(btn_key))
             else:
