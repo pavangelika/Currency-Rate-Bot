@@ -11,28 +11,25 @@ def extract_currency_code(currency_str):
         return currency_str.split('(')[-1].rstrip(')')
     return None
 
-def update_selected_currency(user_data, user_id, currency_data):
+def update_selected_currency(db_result, user_id, currency_data):
     """
-    Заменяет selected_currency на список объектов из currency.json,
-    где charCode совпадает с кодами из selected_currency.
+    Заменяет selected_currency на список объектов из currency_data,
+    где charCode совпадает с кодами из db_result.
     """
-    if user_id not in user_data:
-        raise KeyError(f"User ID {user_id} not found in user_data.")
+    if not isinstance(db_result, list):
+        raise TypeError(f"db_result должен быть списком, получено: {type(db_result)}")
 
-    selected_currency = user_data[user_id].get('selected_currency', set())
     updated_currencies = []
 
-    for currency_str in selected_currency:
-        code = extract_currency_code(currency_str)  # Предполагаем, что функция существует
+    for currency_str in db_result:
+        code = extract_currency_code(currency_str)  # Функция должна извлекать код валюты
         if code:
             # Ищем валюту в currency_data по charCode
             matched_currency = next((item for item in currency_data if item["charCode"] == code), None)
             if matched_currency:
-                updated_currencies.append(matched_currency)  # Исправлено
+                updated_currencies.append(matched_currency)
 
-    # Обновляем selected_currency
-    user_data[user_id]['selected_currency'] = updated_currencies
-
+    return updated_currencies  # Возвращаем обновленный список валют
 
 
 def load_currency_data(file_path):

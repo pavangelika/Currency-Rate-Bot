@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 
@@ -72,20 +73,24 @@ async def add_user_to_db(pool, user_data):
 
 
 async def update_user(pool, user_id, selected_currency=None, everyday=None):
-    """Обновляет данные пользователя."""
+    """Обновляет данные пользователя в БД."""
     try:
         async with pool.acquire() as connection:
             update_fields = []
             update_values = []
 
             if selected_currency is not None:
-                # Преобразуем множество в список и передаём как массив PostgreSQL (TEXT[])
-                currency_list = list(selected_currency)  # {'USD', 'EUR'} -> ['USD', 'EUR']
-                update_fields.append(f"currency_data = ${len(update_values) + 1}::TEXT[]")
-                update_values.append(currency_list)
+                if isinstance(selected_currency, list) and all(isinstance(item, dict) for item in selected_currency):
+                    # Конвертируем список словарей в список строк (JSON)
+                    currency_strings = [json.dumps(currency, ensure_ascii=False) for currency in selected_currency]
+                else:
+                    currency_strings = selected_currency  # Уже в правильном формате
+
+                update_fields.append("currency_data = $1")
+                update_values.append(currency_strings)  # Передаем список JSON-строк в PostgreSQL
 
             if everyday is not None:
-                update_fields.append(f"everyday = ${len(update_values) + 1}")
+                update_fields.append("everyday = $2")
                 update_values.append(everyday)
 
             if update_fields:
@@ -96,6 +101,8 @@ async def update_user(pool, user_id, selected_currency=None, everyday=None):
     except Exception as e:
         logger.error(f"Error updating user {user_id}: {e}")
         raise
+
+
 
 
 
@@ -135,4 +142,39 @@ async def get_everyday(pool, user_id):
             return result
     except Exception as e:
         logger.error(f"Error fetching everyday for {user_id} from the database: {e}")
+        return None
+
+
+async def format_currency_from_db(db_result):
+    """Преобразует строку из БД в нужный формат 'name(charCode)'."""
+    try:
+        # Если db_result - это строка, десериализуем ее
+        if isinstance(db_result, str):
+            currencies = json.loads(db_result)  # Десериализация JSON строки
+        elif isinstance(db_result, list):
+            currencies = db_result  # Если уже список, просто используем его
+        else:
+            raise ValueError("Invalid db_result format")
+
+        formatted_currencies = []
+
+        # Форматируем валюты
+        for currency in currencies:
+            # Если currency - строка, десериализуем её
+            if isinstance(currency, str):
+                currency = json.loads(currency)
+
+            if isinstance(currency, dict):  # Убедимся, что элемент - это словарь
+                name = currency.get('name')
+                char_code = currency.get('charCode')
+                if name and char_code:
+                    formatted_currencies.append(f"{name} ({char_code})")
+            else:
+                logger.error(f"Invalid currency format: {currency}")
+
+        # Возвращаем строку, соединенную через запятую
+        return ', '.join(formatted_currencies)
+
+    except Exception as e:
+        logger.error(f"Error formatting currency from DB: {e}")
         return None

@@ -14,7 +14,8 @@ from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
 from config_data import config
 
-from database.db import create_db_pool, add_user_to_db, create_table, update_user, get_everyday, get_selected_currency
+from database.db import create_db_pool, add_user_to_db, create_table, update_user, get_everyday, get_selected_currency, \
+    format_currency_from_db
 from handlers import selected_currency
 from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
@@ -32,21 +33,26 @@ router = Router()
 # Глобальная переменная для планировщика
 scheduler = None
 
+
 def set_scheduler(sched):
     global scheduler
     scheduler = sched
 
+
 # Инициализируем пул подключений к базе данных
 db_pool = None
+
 
 async def init_db():
     global db_pool
     db_pool = await create_db_pool()
     await create_table(db_pool)
 
+
 def get_lexicon_data(command: str):
     """Получаем данные из LEXICON_GLOBAL по команде."""
     return next((item for item in LEXICON_GLOBAL if item["command"] == command), None)
+
 
 @router.message(Command(commands="start"), StateFilter(default_state))
 async def process_start_handler(message: Message, state: FSMContext):
@@ -189,11 +195,9 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
             item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
             if item:
                 if item["command"] in ["everyday"]:
-                    # Проверяем значения в user_state
                     everyday = await get_everyday(db_pool, user_id)
+                    logger.info(f'из базы: {everyday}')
                     btn_key = "btn2" if everyday == True else "btn1"  # Выбираем кнопку в зависимости от состояния
-                    # btn_key = "btn2" if user_dict[user_id].get(
-                    #     "everyday") == True else "btn1"  # Выбираем кнопку в зависимости от состояния
                     btn_text = item.get(btn_key, button_data.get(btn_key))
                 else:
                     btn_text = item.get("btn", button_data.get("btn"))
@@ -214,27 +218,17 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         logger.info(f"state {state}")
 
         db_result = await get_selected_currency(db_pool, user_id)
-        logger.info(f"из базы {db_result}")
-
-        update_selected_currency(state, user_id, currency_data)  # Обновляем user_dict
-        # logger.info(f"{state}")
-        # state= await state.update_data()
-        # logger.info(f"{state}")
-        # selected = state[user_id]['selected_currency']
-        # logger.info(f"{selected}")
-
+        updated_currencies = update_selected_currency(db_result, user_id, currency_data)  # Обновляем user_dict
 
         # Добавляем пользователя в базу данных
-        # try:
-        #     selected = json.dumps(list(selected))
-        #     await update_user(db_pool, user_id, selected_currency=selected)
-        # except Exception as e:
-        #     logger.error(e)
-
-# # удалить лишние данные с ключами
-#     await state.clear()
-#     logger.info(f"Users has been updated: {users}")
-#     logger.info(f'User_dict{user_dict}')
+        try:
+            await update_user(db_pool, user_id, selected_currency=updated_currencies)
+            db_result = await get_selected_currency(db_pool, user_id)
+            logger.info(f"БД selected_currency={db_result}")
+            formatted_result = await format_currency_from_db(db_result)
+            logger.info(formatted_result)
+        except Exception as e:
+            logger.error(e)
 
 
 @router.message(Command(commands=["today"]))
@@ -259,6 +253,7 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
     except Exception as e:
         logger.error(e)
 
+
 @router.message(Command(commands=["everyday"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("everyday")["command"])
 async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSMContext):
@@ -275,7 +270,7 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
     # Проверяем, подписан ли пользователь на рассылку
     everyday = await get_everyday(db_pool, user_id)
     if everyday:
-    # if users[user_id].get("everyday"):
+        # if users[user_id].get("everyday"):
         job_id = f"daily_greeting_{user_id}"
         text = get_lexicon_data("everyday")['notification_false']
 
@@ -310,6 +305,7 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
         else:
             await message.answer(text=get_lexicon_data("everyday")['notification_true'])
     # logger.info(f"Users has been updated: {users}")
+
 
 #
 # @router.message(Command(commands=["chart"]))
@@ -507,3 +503,50 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
 #
 #
 #
+
+
+@router.message(Command(commands=["currency"]))
+async def my_currency(message: Message, state: FSMContext):
+    """Обработчик последней кнопки."""
+    user_id = message.from_user.id
+    currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
+    currency_data = load_currency_data(currency_file_path)
+
+    # Получаем данные из базы данных
+    db_result = await get_selected_currency(db_pool, user_id)
+    logger.info(f"БД selected_currency={db_result}")
+
+    # Форматируем результат
+    formatted_result = await format_currency_from_db(db_result)
+
+    # Проверка, что formatted_result является строкой
+    if not formatted_result:
+        logger.error("Formatted result is empty or None!")
+        formatted_result = "Не удалось получить данные о валютах."
+
+    logger.info(f"Formatted currency result: {formatted_result}")
+
+    # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+
+    for button_data in LEXICON_IN_MESSAGE:
+        item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
+        if item:
+            if item["command"] in ["everyday"]:
+                everyday = await get_everyday(db_pool, user_id)
+                logger.info(f'из базы: {everyday}')
+                btn_key = "btn2" if everyday == True else "btn1"  # Выбираем кнопку в зависимости от состояния
+                btn_text = item.get(btn_key, button_data.get(btn_key))
+            else:
+                btn_text = item.get("btn", button_data.get("btn"))
+
+            if btn_text:
+                keyboard.inline_keyboard.append(
+                    [InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
+
+    select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == "select_rate"), None)
+
+    # Отправляем сообщение с клавиатурой
+    await message.answer(f"{select_rate_data['notification_true']}\n{formatted_result}", reply_markup=keyboard)
+
+
