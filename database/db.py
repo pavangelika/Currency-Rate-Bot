@@ -91,7 +91,7 @@ async def update_user(pool, user_id, selected_currency=None, everyday=None):
 
             if everyday is not None:
                 update_fields.append("everyday = $2")
-                update_values.append(everyday)
+                update_values.append(everyday)  # Здесь everyday должен быть булевым значением True или False
 
             if update_fields:
                 update_values.append(user_id)

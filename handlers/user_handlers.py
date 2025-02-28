@@ -237,8 +237,6 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
     """
     try:
         user_id = event.from_user.id
-        # user_dict = await state.get_data()
-        # selected_data = users[user_id]["selected_currency"]
         selected_data = await get_selected_currency(db_pool, user_id)
         today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
         if isinstance(event, CallbackQuery):

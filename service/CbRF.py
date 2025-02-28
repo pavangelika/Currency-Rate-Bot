@@ -40,8 +40,14 @@ def course_today(selected_data, day):
         xml_data = response.content
         root = ET.fromstring(xml_data)
 
+        # Добавляем валюты из выбранных данных
         for i in selected_data:
-            target_ids.append(i['id'])
+            try:
+                currency = json.loads(i)  # Десериализуем строку JSON
+                target_ids.append(currency['id'])
+            except json.JSONDecodeError:
+                logger.error(f"Ошибка десериализации строки валюты: {i}")
+                continue
 
         date = root.get('Date')
         today = day.replace("/", ".")
