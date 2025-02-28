@@ -15,7 +15,7 @@ from aiogram.types.web_app_info import WebAppInfo
 from config_data import config
 
 from database.db import create_db_pool, add_user_to_db, create_table, update_user, get_everyday, get_selected_currency, \
-    format_currency_from_db
+    format_currency_from_db, get_user_by_id
 from handlers import selected_currency
 from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
@@ -497,12 +497,14 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
 # #     await message.reply(text='Вы прислали видео')
 #
 #
-# @router.message(Command("users"))
-# async def info(message: Message, state: FSMContext):
-#     logger.info(users)
-#
-#
-#
+@router.message(Command("users"))
+async def info(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    users = await get_user_by_id(db_pool, user_id)
+    logger.info(users)
+
+
+
 
 
 @router.message(Command(commands=["currency"]))

@@ -22,8 +22,8 @@ def create_buttons_from_json_file(file_path):
 CURRENCY = create_buttons_from_json_file(file_path)
 
 LEXICON_MENU: list[dict[str, str]] = [
-    {"command": "menu", "name": "Действия с ботом"},
     {"command": "currency", "name": "Мои валюты"},
+    {"command": "menu", "name": "Действия с ботом"},
     {"command": "users", "name": "users"}
 ]
 
