@@ -1,7 +1,6 @@
 import json
 import os
 from datetime import datetime
-from xmlrpc.client import boolean
 
 import asyncpg
 from config_data import config
@@ -71,45 +70,43 @@ async def add_user_to_db(pool, user_data):
         logger.error(f"Error adding user to the database: {e}")
         raise
 
-
-
-async def update_user(pool, user_id, selected_currency=None, everyday=None):
-    """Обновляет данные пользователя в БД."""
+async def update_user_everyday(pool, user_id, everyday):
+    """Обновляет статус ежедневной рассылки пользователя в БД."""
     try:
         async with pool.acquire() as connection:
-            update_fields = []
-            update_values = []
+            # Преобразуем значение everyday в булевое значение, если оно не является таковым
+            if isinstance(everyday, bool):
+                everyday_value = everyday
+            elif isinstance(everyday, int):
+                # Преобразуем числа 0/1 в False/True
+                everyday_value = bool(everyday)
+            else:
+                logger.error(f"Invalid value for 'everyday': {everyday}. Expected a boolean or integer.")
+                return
 
-            if selected_currency is not None:
-                if isinstance(selected_currency, list) and all(isinstance(item, dict) for item in selected_currency):
-                    # Конвертируем список словарей в список строк (JSON)
-                    currency_strings = [json.dumps(currency, ensure_ascii=False) for currency in selected_currency]
-                else:
-                    currency_strings = selected_currency  # Уже в правильном формате
-
-                update_fields.append("currency_data = $1")
-                update_values.append(currency_strings)  # Передаем список JSON-строк в PostgreSQL
-
-            if everyday is not None:
-                # Преобразуем значение everyday в булевое значение, если оно не является таковым
-                if isinstance(everyday, bool):
-                    update_fields.append("everyday = $2")
-                    update_values.append(everyday)
-                elif isinstance(everyday, int):
-                    # Преобразуем числа 0/1 в False/True
-                    update_fields.append("everyday = $2")
-                    update_values.append(bool(everyday))  # Преобразуем в True или False
-                else:
-                    logger.error(f"Invalid value for 'everyday': {everyday}. Expected a boolean or integer.")
-                    return
-
-            if update_fields:
-                update_values.append(user_id)
-                query = f"UPDATE users SET {', '.join(update_fields)} WHERE user_id = ${len(update_values)}"
-                await connection.execute(query, *update_values)
-                logger.info(f"User {user_id} updated successfully.")
+            query = "UPDATE users SET everyday = $1 WHERE user_id = $2"
+            await connection.execute(query, everyday_value, user_id)
+            logger.info(f"User {user_id} everyday status updated to {everyday_value}.")
     except Exception as e:
-        logger.error(f"Error updating user {user_id}: {e}")
+        logger.error(f"Error updating user {user_id} everyday status: {e}")
+        raise
+
+
+async def update_user_currency(pool, user_id, selected_currency):
+    """Обновляет данные о валюте пользователя в БД."""
+    try:
+        async with pool.acquire() as connection:
+            if isinstance(selected_currency, list) and all(isinstance(item, dict) for item in selected_currency):
+                # Конвертируем список словарей в список строк (JSON)
+                currency_strings = [json.dumps(currency, ensure_ascii=False) for currency in selected_currency]
+            else:
+                currency_strings = selected_currency  # Уже в правильном формате
+
+            query = "UPDATE users SET currency_data = $1 WHERE user_id = $2"
+            await connection.execute(query, currency_strings, user_id)
+            logger.info(f"User {user_id} currency updated successfully.")
+    except Exception as e:
+        logger.error(f"Error updating user {user_id} currency: {e}")
         raise
 
 
