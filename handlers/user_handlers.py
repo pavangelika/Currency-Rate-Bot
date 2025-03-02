@@ -273,22 +273,20 @@ async def everyday_handlers(message: Message):
 
 # @router.message(Command(commands=["everyday"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("everyday")["command"])
-async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSMContext):
-    # Получаем user_id в зависимости от типа event
-    if isinstance(event, CallbackQuery):
-        user_id = event.from_user.id
-        message = event.message  # Для callback_query используем message из event
-    else:
-        user_id = event.from_user.id
-        message = event  # Для message используем сам event
+async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
+    # Получаем user_id и сообщение из callback_query
+    user_id = event.from_user.id
+    message = event.message  # Используем message из callback_query
 
     # Проверяем, подписан ли пользователь на рассылку
     everyday = await get_everyday(db_pool, user_id)
     logger.info(f"User {user_id} everyday {everyday}")
+
     if everyday:
         logger.info(f'everyday True = {everyday}')
         job_id = f"daily_greeting_{user_id}"
         text = get_lexicon_data("everyday")['notification_false']
+
         # Если задача существует, отменяем её
         if scheduler.get_job(job_id):
             try:
@@ -296,23 +294,37 @@ async def send_today_schedule_handler(event: Message | CallbackQuery, state: FSM
                 logger.info(f'Scheduler has been deleted {job_id}')
             except Exception as e:
                 logger.error(e)
+
+        # Обновляем статус подписки на False
         await update_user_everyday(db_pool, user_id, False)
-        if isinstance(event, CallbackQuery):
-            await event.answer()  # Подтверждаем обработку callback_query без текста
+
+        # Подтверждаем обработку callback_query
+        await event.answer()
+
+        # Отправляем сообщение об отключении рассылки
         await message.answer(text=get_lexicon_data("everyday")['notification_false'])
 
-    else:  # Если пользователь не подписан, подписываем его
+    else:
+        # Если пользователь не подписан, подписываем его
         try:
             logger.info(f'everyday False = {everyday}')
             everyday = await update_user_everyday(db_pool, user_id, True)
             logger.info(f"User {user_id} everyday {everyday}")
+
+            # Получаем выбранные валюты и текущую дату
             selected_data = await get_selected_currency(db_pool, user_id)
             today = datetime.date.today().strftime("%d/%m/%Y")
-            if isinstance(event, CallbackQuery):
-                await event.answer()  # Подтверждаем обработку callback_query без текста
+
+            # Подтверждаем обработку callback_query
+            await event.answer()
+
+            # Запланируем ежедневную рассылку
             schedule_daily_greeting(user_id, scheduler, selected_data, today)
             logger.info(f"User {user_id} has subscribed to the daily newsletter")
+
+            # Отправляем сообщение о включении рассылки
             await message.answer(text=get_lexicon_data("everyday")['notification_true'])
+
         except Exception as e:
             logger.error(f"Error in send_today_schedule_handler: {e}")
 
