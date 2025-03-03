@@ -481,12 +481,6 @@ async def process_send_photo(message: Message):
     longitude = message.location.longitude
     location = await get_city_by_coordinates(latitude, longitude)
     city = location.get("city", "Неизвестный город")
-    continent = location.get("continent","Неизвестный континент")
-    continentCod = location.get("continentCod", "Неизвестный код континента")
-    continentName = location.get("continentName", "Неизвестная страна")
-    countryCode = location.get("countryCode", "Неизвестный код страны")
-    region = location.get("region", "Неизвестный регион")
-    regionCode = location.get("regionCode", "Неизвестный код региона")
 
     # Формируем словарь с местоположением
     location_data = {
@@ -515,38 +509,6 @@ async def process_send_photo(message: Message):
         await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\n{city}, я угадал?')
     else:
         await message.reply("Похоже вы нигде...")
-
-
-
-
-# # Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
-# # кроме команд "/start" и "/help"
-# # @router.message()
-# # async def send_echo(message: Message):
-# #     await message.answer("Я не понимаю, воспользуйтесь меню команд")
-#
-# # @router.message(F.content_type == ContentType.PHOTO)
-# # async def process_send_photo(message: Message):
-# #     await message.reply(text='Вы прислали фото')
-# #
-# # @router.message(F.content_type == ContentType.VOICE)
-# # async def process_send_photo(message: Message):
-# #     await message.reply(text='Вы прислали звук')
-# #
-# # @router.message(F.content_type == ContentType.VIDEO)
-# # async def process_send_photo(message: Message):
-# #     await message.reply(text='Вы прислали видео')
-#
-#
-@router.message(Command("users"))
-async def info(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    users = await get_user_by_id(db_pool, user_id)
-    logger.info(users)
-
-
-
-
 
 
 @router.message(Command(commands=["currency"]))
@@ -593,3 +555,36 @@ async def my_currency(message: Message, state: FSMContext):
     await message.answer(f"{select_rate_data['notification_true']}\n{formatted_result}", reply_markup=keyboard)
 
 
+@router.message(F.content_type.in_({ContentType.PHOTO, ContentType.DOCUMENT, ContentType.VOICE, ContentType.VIDEO}))
+async def process_sorry(message: Message):
+    if message.photo:
+        await message.reply(text='Извини, 🥺 я не умею обрабатывать фото.')
+    elif message.document:
+        await message.reply(text='Извини, 🥺 я не умею обрабатывать документы.')
+    elif message.voice:
+        await message.reply(text='Извини, 🥺 я не умею слушать звуковые сообщения.')
+    elif message.video:
+        await message.reply(text='Извини, 🥺 я не умею обрабатывать видео.')
+
+@router.message(F.content_type.in_({ContentType.STICKER, ContentType.ANIMATION, ContentType.TEXT}))
+async def process_text_sticker_animation(message: Message):
+    if message.text:
+        await message.reply(text=message.text)
+    elif message.sticker:
+        await message.reply_sticker(message.sticker.file_id)  # Отправляем стикер
+    elif message.animation:
+        await message.reply_animation(message.animation.file_id)  # Отправляем гифку
+
+
+# # кроме команд "/start" и "/help"
+# @router.message()
+# async def send_echo(message: Message):
+#     await message.answer("Я не понимаю, воспользуйтесь меню команд")
+
+
+
+@router.message(Command("users"))
+async def info(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    users = await get_user_by_id(db_pool, user_id)
+    logger.info(users)
