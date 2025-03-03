@@ -481,10 +481,42 @@ async def process_send_photo(message: Message):
     longitude = message.location.longitude
     location = await get_city_by_coordinates(latitude, longitude)
     city = location.get("city", "Неизвестный город")
+    continent = location.get("continent","Неизвестный континент")
+    continentCod = location.get("continentCod", "Неизвестный код континента")
+    continentName = location.get("continentName", "Неизвестная страна")
+    countryCode = location.get("countryCode", "Неизвестный код страны")
+    region = location.get("region", "Неизвестный регион")
+    regionCode = location.get("regionCode", "Неизвестный код региона")
+
+    # Формируем словарь с местоположением
+    location_data = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "city": location.get("city", "Неизвестный город"),
+        "region": location.get("principalSubdivision", "Неизвестный регион"),
+        "regionCode": location.get("principalSubdivisionCode", "Неизвестный код региона"),
+        "countryName": location.get("countryName", "Неизвестная страна"),
+        "countryCode": location.get("countryCode", "Неизвестный код страны"),
+        "continent": location.get("continent", "Неизвестный континент"),
+        "continentCode": location.get("continentCode", "Неизвестный код континента")
+    }
+
+    # Сохраняем в PostgreSQL
+    async with db_pool.acquire() as connection:
+        await connection.execute(
+            "UPDATE users SET location = $1 WHERE user_id = $2",
+            json.dumps(location_data, ensure_ascii=False),  # Преобразуем в JSON-строку
+            user_id
+        )
+
+    logger.info(f"Локация пользователя {user_id} обновлена: {location_data}")
+
     if city!="Неизвестный город":
         await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\n{city}, я угадал?')
     else:
         await message.reply("Похоже вы нигде...")
+
+
 
 
 # # Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
