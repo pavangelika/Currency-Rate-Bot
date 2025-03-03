@@ -17,6 +17,7 @@ from config_data import config
 from database.db import create_db_pool, create_table, get_everyday, get_selected_currency, \
     format_currency_from_db, get_user_by_id, update_user_everyday, add_user_to_db, update_user_currency
 from handlers import selected_currency
+from service.geocoding import get_city_by_coordinates
 from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
@@ -471,7 +472,16 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
 #
 #     # await callback.message.answer("Для показа курс валют в банках вашего города требуется узнать ваш город:", reply_markup=keyboard)
 #
-#
+
+@router.message(F.content_type == ContentType.LOCATION)
+async def process_send_photo(message: Message):
+    user_id = message.from_user.id
+    latitude = message.location.latitude
+    longitude = message.location.longitude
+    city = await get_city_by_coordinates(latitude, longitude)
+    await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\nВы в {city}?')
+
+
 # # Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
 # # кроме команд "/start" и "/help"
 # # @router.message()
@@ -496,6 +506,7 @@ async def info(message: Message, state: FSMContext):
     user_id = message.from_user.id
     users = await get_user_by_id(db_pool, user_id)
     logger.info(users)
+
 
 
 
