@@ -481,7 +481,10 @@ async def process_send_photo(message: Message):
     longitude = message.location.longitude
     location = await get_city_by_coordinates(latitude, longitude)
     city = location.get("city", "Неизвестный город")
-    await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\nВы в {city}?')
+    if city!="Неизвестный город":
+        await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\n{city}, я угадал?')
+    else:
+        await message.reply("Похоже вы нигде...")
 
 
 # # Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
