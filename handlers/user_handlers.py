@@ -218,6 +218,7 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         logger.info(f"state {state}")
 
         db_result = await get_selected_currency(db_pool, user_id)
+        logger.info(f"db_result {db_result}")
         updated_currencies = update_selected_currency(db_result, user_id, currency_data)  # Обновляем user_dict
 
         # Добавляем пользователя в базу данных

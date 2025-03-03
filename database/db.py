@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-
+from asyncpg import Pool
 import asyncpg
 from config_data import config
 
@@ -33,12 +33,13 @@ async def create_table(pool):
                     is_premium BOOLEAN DEFAULT FALSE,
                     date_start TIMESTAMP NOT NULL,
                     timezone TEXT NOT NULL,
-                    currency_data TEXT[] DEFAULT '{}',
+                    currency_data JSONB DEFAULT '[]',                   
                     everyday BOOLEAN DEFAULT FALSE,
                     location TEXT[] DEFAULT '{}'
                 );
             """)
             logger.info("Table 'users' has been created or already exists.")
+            # currency_data TEXT[] DEFAULT '{}',
     except Exception as e:
         logger.error(f"Error creating table 'users': {e}")
         raise  # Повторно выбрасываем исключение для обработки на более высоком уровне
@@ -92,18 +93,23 @@ async def update_user_everyday(pool, user_id, everyday):
         raise
 
 
-async def update_user_currency(pool, user_id, selected_currency):
+async def update_user_currency(pool: asyncpg.Pool, user_id: int, selected_currency):
     """Обновляет данные о валюте пользователя в БД."""
     try:
         async with pool.acquire() as connection:
+            # Определяем корректный формат для хранения в jsonb
             if isinstance(selected_currency, list) and all(isinstance(item, dict) for item in selected_currency):
-                # Конвертируем список словарей в список строк (JSON)
-                currency_strings = [json.dumps(currency, ensure_ascii=False) for currency in selected_currency]
+                currency_data = json.dumps(selected_currency, ensure_ascii=False)  # Конвертируем в JSON-строку
+            elif isinstance(selected_currency, set) and all(isinstance(item, str) for item in selected_currency):
+                currency_data = json.dumps(list(selected_currency),
+                                           ensure_ascii=False)  # Преобразуем множество в список и затем в JSON
             else:
-                currency_strings = selected_currency  # Уже в правильном формате
+                raise ValueError("Неподдерживаемый формат selected_currency")
 
+            # SQL-запрос для обновления jsonb-поля
             query = "UPDATE users SET currency_data = $1 WHERE user_id = $2"
-            await connection.execute(query, currency_strings, user_id)
+            await connection.execute(query, currency_data, user_id)
+
             logger.info(f"User {user_id} currency updated successfully.")
     except Exception as e:
         logger.error(f"Error updating user {user_id} currency: {e}")
@@ -125,14 +131,18 @@ async def get_user_by_id(pool, user_id):
         return None
 
 
-async def get_selected_currency(pool, user_id):
+async def get_selected_currency(pool: asyncpg.Pool, user_id: int):
     """Возвращает выбранные валюты пользователя."""
     try:
         async with pool.acquire() as connection:
             result = await connection.fetchval(
                 "SELECT currency_data FROM users WHERE user_id = $1", user_id
             )
-            return result if result else []  # PostgreSQL TEXT[] уже возвращает список
+
+            if result:
+                return json.loads(result)  # Декодируем JSON-строку обратно в Python-объект
+            return []  # Если данных нет, возвращаем пустой список
+
     except Exception as e:
         logger.error(f"Error fetching selected_currency for {user_id} from the database: {e}")
         return []

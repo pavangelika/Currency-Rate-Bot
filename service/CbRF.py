@@ -40,14 +40,22 @@ def course_today(selected_data, day):
         xml_data = response.content
         root = ET.fromstring(xml_data)
 
-        # Добавляем валюты из выбранных данных
-        for i in selected_data:
-            try:
-                currency = json.loads(i)  # Десериализуем строку JSON
-                target_ids.append(currency['id'])
-            except json.JSONDecodeError:
-                logger.error(f"Ошибка десериализации строки валюты: {i}")
-                continue
+        target_ids = []  # Список нужных ID
+
+        # Проверяем, в каком формате данные: список словарей или множества
+        if isinstance(selected_data, list):
+            for item in selected_data:
+                if isinstance(item, dict) and "id" in item:
+                    target_ids.append(item["id"])
+                else:
+                    logger.error(f"Некорректный формат данных валюты: {item}")
+
+        elif isinstance(selected_data, set):  # Если это множество строк валют
+            target_ids = list(selected_data)  # Конвертируем в список
+
+        else:
+            logger.error(f"Некорректный формат selected_data: {type(selected_data)}")
+            return "Ошибка обработки данных."
 
         date = root.get('Date')
         today = day.replace("/", ".")
