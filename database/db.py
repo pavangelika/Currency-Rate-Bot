@@ -35,7 +35,7 @@ async def create_table(pool):
                     timezone TEXT NOT NULL,
                     currency_data JSONB DEFAULT '[]',                   
                     everyday BOOLEAN DEFAULT FALSE,
-                    location TEXT[] DEFAULT '{}'
+                    location JSONB DEFAULT '[]'
                 );
             """)
             logger.info("Table 'users' has been created or already exists.")

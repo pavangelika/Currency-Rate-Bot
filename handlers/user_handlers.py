@@ -479,7 +479,8 @@ async def process_send_photo(message: Message):
     user_id = message.from_user.id
     latitude = message.location.latitude
     longitude = message.location.longitude
-    city = await get_city_by_coordinates(latitude, longitude)
+    location = await get_city_by_coordinates(latitude, longitude)
+    city = location.get("city", "Неизвестный город")
     await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\nВы в {city}?')
 
 

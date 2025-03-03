@@ -12,6 +12,7 @@ async def get_city_by_coordinates(latitude: float, longitude: float) -> str:
             if response.status == 200:
                 data = await response.json()
                 logger.info(f"get_city_by_coordinates: {data}")
-                return data.get("city", "Неизвестный город")
+                return data
+                # return data.get("city", "Неизвестный город")
             else:
                 return "Не удалось определить город"
