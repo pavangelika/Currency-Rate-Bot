@@ -576,13 +576,6 @@ async def process_text_sticker_animation(message: Message):
         await message.reply_animation(message.animation.file_id)  # Отправляем гифку
 
 
-# # кроме команд "/start" и "/help"
-# @router.message()
-# async def send_echo(message: Message):
-#     await message.answer("Я не понимаю, воспользуйтесь меню команд")
-
-
-
 @router.message(Command("users"))
 async def info(message: Message, state: FSMContext):
     user_id = message.from_user.id
