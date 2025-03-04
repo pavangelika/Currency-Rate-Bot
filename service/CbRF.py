@@ -5,6 +5,8 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 from config_data import config
+
+from github.upload_to_github import upload_to_github
 from logger.logging_settings import logger
 
 
@@ -386,5 +388,6 @@ def graf_mobile(currencies, start_year, end_year, user_id):
         fig.write_html(file_path)  # Сохраняем HTML
 
         # Генерируем ссылку
-        file_url = f"{config.GITHUB_PAGES}/{user_id}/{file_name}"
+        file_url = f"{config.GITHUB_PAGES}{user_id}/{file_name}"
+        upload_to_github()
         return file_url
