@@ -381,7 +381,9 @@ def graf_mobile(currencies, start_year, end_year, user_id):
         os.makedirs(user_folder, exist_ok=True)
 
         names = names_str.replace(", ", "_")
-        file_name = f"{names}_{start_year}_{end_year}.html"
+        # file_name = f"{names}_{start_year}_{end_year}.html"
+        file_name = f"{names}.html"
+
         file_path = os.path.join(user_folder, file_name)
 
         fig.write_html(file_path)  # Сохраняем HTML

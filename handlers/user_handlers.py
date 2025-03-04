@@ -432,6 +432,8 @@ async def process_year(message: Message, state: FSMContext):
     else:
         await loading_task  # Дожидаемся окончания анимации
         await message.answer("График пока недоступен. Попробуйте позже.")
+    # Очищаем состояние после успешного выполнения
+    await state.clear()
 
 
 @router.callback_query(F.data == "pc_graph")
