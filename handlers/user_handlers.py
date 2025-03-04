@@ -1,4 +1,5 @@
 # user_handlers.py
+import asyncio
 import datetime
 import json
 import os
@@ -16,6 +17,8 @@ from config_data import config
 
 from database.db import create_db_pool, create_table, get_everyday, get_selected_currency, \
     format_currency_from_db, get_user_by_id, update_user_everyday, add_user_to_db, update_user_currency
+from github.check_url import check_file_available
+from github.downloading import send_loading_message
 from handlers import selected_currency
 from service.geocoding import get_city_by_coordinates
 from states.state import UserState
@@ -404,26 +407,32 @@ async def process_year(message: Message, state: FSMContext):
         selected_data_list.append({"name": name, "value": result_data})
 
     group_for_graf = categorize_currencies(selected_data_list)
-    index = graf_mobile(group_for_graf, start, end, user_id)
-    logger.info(index)
-    logger.info(f"File index.html updated: {os.path.exists(index)}")
+    url = graf_mobile(group_for_graf, start, end, user_id)
+    logger.info(url)
+    logger.info(f"File index.html updated: {os.path.exists(url)}")
 
-    # Создаем кнопки
-    button_mobile = InlineKeyboardButton(
-        text="График на телефоне",
-        web_app=WebAppInfo(url=index)
-    )
-    button_pc = InlineKeyboardButton(
-        text="График на ПК",
-        callback_data="pc_graph"
-    )
+    # Отправляем анимационное сообщение пользователю
+    loading_task = asyncio.create_task(send_loading_message(message))
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[button_mobile], [button_pc]]
-    )
+    # Проверяем доступность файла
+    if await check_file_available(url):
+        await loading_task  # Дожидаемся окончания анимации
 
-    # Отправляем сообщение
-    await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
+        # Отправляем кнопки после загрузки
+        button_mobile = InlineKeyboardButton(
+            text="График на телефоне",
+            web_app=WebAppInfo(url=url)
+        )
+        button_pc = InlineKeyboardButton(
+            text="График на ПК",
+            callback_data="pc_graph"
+        )
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_mobile], [button_pc]])
+        await message.answer("График готов! Нажмите на кнопку ниже:", reply_markup=keyboard)
+    else:
+        await loading_task  # Дожидаемся окончания анимации
+        await message.answer("График пока недоступен. Попробуйте позже.")
 
 
 @router.callback_query(F.data == "pc_graph")
