@@ -1,4 +1,7 @@
 import os
+import time
+from pathlib import Path
+
 import git
 import shutil
 
@@ -10,6 +13,9 @@ STATIC_PATH = os.path.join(REPO_PATH, 'static') #Переход в папку st
 GITHUB_REPO_URL = "git@github.com:pavangelika/CurrencyRate.git"  # SSH или HTTPS ссылка на репозиторий
 COMMIT_MESSAGE = "Автообновление графиков"
 
+DAYS_TO_KEEP = 1  # Сколько дней храним файлы
+now = time.time()
+
 
 def upload_to_github():
     """
@@ -18,6 +24,11 @@ def upload_to_github():
     try:
         # Открываем локальный репозиторий
         repo = git.Repo(REPO_PATH)
+
+        for file in Path(STATIC_PATH).glob("*.html"):
+            if file.is_file() and now - file.stat().st_mtime > DAYS_TO_KEEP * 86400:
+                file.unlink()
+                logger.info(f"Удален старый файл: {file}")
 
         # Проверяем наличие изменений
         repo.git.add(STATIC_PATH)  # Добавляем только папку с графиками

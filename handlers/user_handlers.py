@@ -427,7 +427,12 @@ async def process_year(message: Message, state: FSMContext):
             callback_data="pc_graph"
         )
 
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_mobile], [button_pc]])
+        button_change_years = InlineKeyboardButton(
+            text = "Выбрать другие даты",
+            callback_data="chart"
+        )
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_mobile], [button_pc], button_change_years])
         await message.answer("График готов! Нажмите на кнопку ниже:", reply_markup=keyboard)
     else:
         await loading_task  # Дожидаемся окончания анимации
