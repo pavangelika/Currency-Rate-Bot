@@ -334,7 +334,7 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
 
 
 @router.message(Command(commands=["chart"]))
-@router.callback_query(F.data == get_lexicon_data("chart")["command"])
+@router.callback_query(F.data.in_([get_lexicon_data("chart")["command"], "change_years"]))
 async def request_year(event: Message | CallbackQuery, state: FSMContext):
     # Получаем user_id в зависимости от типа event
     if isinstance(event, CallbackQuery):
@@ -359,6 +359,10 @@ async def process_year(message: Message, state: FSMContext):
     if user_input.startswith("/"):
         await state.clear()
         logger.info(f'User {user_id} input command {user_input}')
+        return
+
+    if user_input in ["отмена", "cancel"]:
+        await state.clear()
         return
 
     # Определяем, введен один год или диапазон
@@ -387,6 +391,8 @@ async def process_year(message: Message, state: FSMContext):
     if end > current_year:
         await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
         return
+
+
 
     # Сохраняем данные в state
     await state.update_data(start=start, end=end)
@@ -428,11 +434,16 @@ async def process_year(message: Message, state: FSMContext):
         )
 
         button_change_years = InlineKeyboardButton(
-            text = "Выбрать другие даты",
-            callback_data="chart"
+            text = "Выбрать другой диапозон лет",
+            callback_data="change_years"
         )
 
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_mobile], [button_pc], button_change_years])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [button_mobile],
+            [button_pc],
+            [button_change_years]
+        ])
+
         await message.answer("График готов! Нажмите на кнопку ниже:", reply_markup=keyboard)
     else:
         await loading_task  # Дожидаемся окончания анимации
@@ -581,14 +592,14 @@ async def process_sorry(message: Message):
         await message.reply(text='Извини, 🥺 я не умею обрабатывать видео.')
 
 
-@router.message(F.content_type.in_({ContentType.STICKER, ContentType.ANIMATION, ContentType.TEXT}))
-async def process_text_sticker_animation(message: Message):
-    if message.text:
-        await message.reply(text=message.text)
-    elif message.sticker:
-        await message.reply_sticker(message.sticker.file_id)  # Отправляем стикер
-    elif message.animation:
-        await message.reply_animation(message.animation.file_id)  # Отправляем гифку
+# @router.message(F.content_type.in_({ContentType.STICKER, ContentType.ANIMATION, ContentType.TEXT}))
+# async def process_text_sticker_animation(message: Message):
+#     if message.text:
+#         await message.reply(text=message.text)
+#     elif message.sticker:
+#         await message.reply_sticker(message.sticker.file_id)  # Отправляем стикер
+#     elif message.animation:
+#         await message.reply_animation(message.animation.file_id)  # Отправляем гифку
 
 
 @router.message(Command("users"))

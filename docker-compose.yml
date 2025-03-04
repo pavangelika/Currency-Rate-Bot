@@ -33,20 +33,7 @@ services:
 volumes:
   postgres_data:
 
-#cd C:\ANGEL\MyProjects\CurrencyRate
-#docker-compose up -d
-#dosker ps
-#docker exec -it postgres-container psql -U myuser -d db_currency_rate
-#\dt
-#\d users
-#SELECT * FROM users;
-#TRUNCATE TABLE users RESTART IDENTITY CASCADE;
-#DROP TABLE IF EXISTS users, other_table CASCADE;
 
-#docker-compose down
-#docker-compose build --no-cache
-
-#docker inspect 62f71247f598 | grep IPAddress
 
 
 
