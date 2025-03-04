@@ -250,6 +250,7 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
     except Exception as e:
         logger.error(e)
 
+
 @router.message(Command(commands=["everyday"]))
 async def everyday_handlers(message: Message):
     # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
@@ -273,7 +274,6 @@ async def everyday_handlers(message: Message):
                 await message.answer(text=btn_answer, reply_markup=keyboard)
 
 
-# @router.message(Command(commands=["everyday"]))
 @router.callback_query(lambda c: c.data == get_lexicon_data("everyday")["command"])
 async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
     # Получаем user_id и сообщение из callback_query
@@ -331,129 +331,128 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
             logger.error(f"Error in send_today_schedule_handler: {e}")
 
 
-#
-# @router.message(Command(commands=["chart"]))
-# @router.callback_query(F.data == get_lexicon_data("chart")["command"])
-# async def request_year(event: Message | CallbackQuery, state: FSMContext):
-#     # Получаем user_id в зависимости от типа event
-#     if isinstance(event, CallbackQuery):
-#         await event.answer('')
-#         message = event.message  # Для callback_query используем message из event
-#     else:
-#         message = event  # Для message используем сам event
-#
-#     await message.answer("Введите диапазон лет (например, 2022-2025 или 2025):")
-#     await state.set_state(UserState.years)
-#
-# @router.message(UserState.years)
-# async def process_year(message: Message, state: FSMContext):
-#     """Обрабатывает введенный диапазон лет и выводит клавиатуру."""
-#     user_id = message.from_user.id
-#     user_dict = await state.get_data()
-#     user_input = message.text.strip()
-#     current_year = datetime.date.today().year  # Получаем текущий год
-#
-#     # Если пользователь ввел команду (начинается с "/"), очищаем состояние и выходим
-#     if user_input.startswith("/"):
-#         await state.clear()
-#         logger.info(f'User {user_id} input command {user_input}')
-#         return
-#
-#     # Определяем, введен один год или диапазон
-#     if '-' in user_input:
-#         years = user_input.split('-')
-#         if len(years) != 2:
-#             await message.answer("Некорректный ввод. Введите диапазон лет в формате '2022-2025'.")
-#             return
-#         try:
-#             start, end = map(int, years)
-#         except ValueError:
-#             await message.answer("Некорректный ввод. Используйте числа, например '2022-2025'.")
-#             return
-#     else:
-#         try:
-#             start = end = int(user_input)
-#         except ValueError:
-#             await message.answer("Некорректный ввод. Введите год в формате '2025'.")
-#             return
-#
-#     # Проверяем корректность диапазона лет
-#     if start > end:
-#         await message.answer("Ошибка. Начальный год не может быть больше конечного.")
-#         return
-#
-#     if end > current_year:
-#         await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
-#         return
-#
-#     # Сохраняем данные в state
-#     await state.update_data(start=start, end=end)
-#
-#     # Проверяем, есть ли у пользователя выбранные валюты
-#     if user_id not in users or "selected_currency" not in users[user_id]:
-#         await message.answer("Ошибка: у вас нет выбранных валют.")
-#         return
-#
-#     # Генерация данных для графика
-#     selected_data = users[user_id]["selected_currency"]
-#     selected_data_list = []
-#     for sd in selected_data:
-#         result = dinamic_course(sd['id'])
-#         name = sd['charCode']
-#         result_data = parse_xml_data(result)
-#         selected_data_list.append({"name": name, "value": result_data})
-#
-#     group_for_graf = categorize_currencies(selected_data_list)
-#     index = graf_mobile(group_for_graf, start, end)
-#     logger.info(f"File index.html updated: {os.path.exists(index)}")
-#
-#     # Создаем кнопки
-#     button_mobile = InlineKeyboardButton(
-#         text="График на телефоне",
-#         web_app=WebAppInfo(url=f"{config.GITHUB_PAGES}?v={int(time.time())}")
-#     )
-#     button_pc = InlineKeyboardButton(
-#         text="График на ПК",
-#         callback_data="pc_graph"
-#     )
-#
-#     keyboard = InlineKeyboardMarkup(
-#         inline_keyboard=[[button_mobile], [button_pc]]
-#     )
-#
-#     # Отправляем сообщение
-#     await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
-#
-#
-#
-# @router.callback_query(F.data == "pc_graph")
-# async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
-#     await callback.answer('')
-#     data = await state.get_data()
-#     # user_dict = await state.get_data()
-#     start = data.get("start")
-#     end = data.get("end")
-#
-#     if start is None or end is None:
-#         await callback.message.answer("Введите еще раз диапазон лет (например, 2022-2025 или 2025):")
-#         await state.set_state(UserState.years)
-#         return
-#
-#     user_id = callback.from_user.id
-#     selected_data = users[user_id]["selected_currency"]
-#
-#     selected_data_list = []
-#     for sd in selected_data:
-#         result = dinamic_course(sd['id'])
-#         name = sd['charCode']
-#         result_data = parse_xml_data(result)
-#         selected_data_list.append({"name": name, "value": result_data})
-#
-#     group_for_graf = categorize_currencies(selected_data_list)
-#     graf_not_mobile(group_for_graf, start, end)
-#     await state.clear()
-#
-#
+@router.message(Command(commands=["chart"]))
+@router.callback_query(F.data == get_lexicon_data("chart")["command"])
+async def request_year(event: Message | CallbackQuery, state: FSMContext):
+    # Получаем user_id в зависимости от типа event
+    if isinstance(event, CallbackQuery):
+        await event.answer('')
+        message = event.message  # Для callback_query используем message из event
+    else:
+        message = event  # Для message используем сам event
+
+    await message.answer("Введите диапазон лет (например, 2022-2025 или 2025):")
+    await state.set_state(UserState.years)
+
+
+@router.message(UserState.years)
+async def process_year(message: Message, state: FSMContext):
+    """Обрабатывает введенный диапазон лет и выводит клавиатуру."""
+    user_id = message.from_user.id
+    user_dict = await state.get_data()
+    user_input = message.text.strip()
+    current_year = datetime.date.today().year  # Получаем текущий год
+
+    # Если пользователь ввел команду (начинается с "/"), очищаем состояние и выходим
+    if user_input.startswith("/"):
+        await state.clear()
+        logger.info(f'User {user_id} input command {user_input}')
+        return
+
+    # Определяем, введен один год или диапазон
+    if '-' in user_input:
+        years = user_input.split('-')
+        if len(years) != 2:
+            await message.answer("Некорректный ввод. Введите диапазон лет в формате '2022-2025'.")
+            return
+        try:
+            start, end = map(int, years)
+        except ValueError:
+            await message.answer("Некорректный ввод. Используйте числа, например '2022-2025'.")
+            return
+    else:
+        try:
+            start = end = int(user_input)
+        except ValueError:
+            await message.answer("Некорректный ввод. Введите год в формате '2025'.")
+            return
+
+    # Проверяем корректность диапазона лет
+    if start > end:
+        await message.answer("Ошибка. Начальный год не может быть больше конечного.")
+        return
+
+    if end > current_year:
+        await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
+        return
+
+    # Сохраняем данные в state
+    await state.update_data(start=start, end=end)
+
+    # Генерация данных для графика
+    selected_data = await get_selected_currency(db_pool, user_id)
+
+    if selected_data is None:
+        await message.answer("Ошибка: у вас нет выбранных валют.")
+        return
+
+    selected_data_list = []
+    for sd in selected_data:
+        result = dinamic_course(sd['id'])
+        name = sd['charCode']
+        result_data = parse_xml_data(result)
+        selected_data_list.append({"name": name, "value": result_data})
+
+    group_for_graf = categorize_currencies(selected_data_list)
+    index = graf_mobile(group_for_graf, start, end, user_id)
+    logger.info(index)
+    logger.info(f"File index.html updated: {os.path.exists(index)}")
+
+    # Создаем кнопки
+    button_mobile = InlineKeyboardButton(
+        text="График на телефоне",
+        web_app=WebAppInfo(url=f"{config.GITHUB_PAGES}?v={int(time.time())}")
+    )
+    button_pc = InlineKeyboardButton(
+        text="График на ПК",
+        callback_data="pc_graph"
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[button_mobile], [button_pc]]
+    )
+
+    # Отправляем сообщение
+    await message.answer("Нажмите на кнопку ниже, чтобы открыть график:", reply_markup=keyboard)
+
+
+@router.callback_query(F.data == "pc_graph")
+async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('')
+    data = await state.get_data()
+    # user_dict = await state.get_data()
+    start = data.get("start")
+    end = data.get("end")
+
+    if start is None or end is None:
+        await callback.message.answer("Введите еще раз диапазон лет (например, 2022-2025 или 2025):")
+        await state.set_state(UserState.years)
+        return
+
+    user_id = callback.from_user.id
+    selected_data = await get_selected_currency(db_pool, user_id)
+
+    selected_data_list = []
+    for sd in selected_data:
+        result = dinamic_course(sd['id'])
+        name = sd['charCode']
+        result_data = parse_xml_data(result)
+        selected_data_list.append({"name": name, "value": result_data})
+
+    group_for_graf = categorize_currencies(selected_data_list)
+    graf_not_mobile(group_for_graf, start, end)
+    await state.clear()
+
 
 #
 # @router.callback_query(F.data == "in_banks")
@@ -505,7 +504,7 @@ async def process_send_photo(message: Message):
 
     logger.info(f"Локация пользователя {user_id} обновлена: {location_data}")
 
-    if city!="Неизвестный город":
+    if city != "Неизвестный город":
         await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\n{city}, я угадал?')
     else:
         await message.reply("Похоже вы нигде...")
@@ -565,6 +564,7 @@ async def process_sorry(message: Message):
         await message.reply(text='Извини, 🥺 я не умею слушать звуковые сообщения.')
     elif message.video:
         await message.reply(text='Извини, 🥺 я не умею обрабатывать видео.')
+
 
 @router.message(F.content_type.in_({ContentType.STICKER, ContentType.ANIMATION, ContentType.TEXT}))
 async def process_text_sticker_animation(message: Message):

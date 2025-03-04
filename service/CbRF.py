@@ -1,9 +1,10 @@
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
-
+from config_data import config
 from logger.logging_settings import logger
 
 
@@ -240,58 +241,130 @@ def graf_not_mobile(currencies, start_year, end_year):
         # Показ графика
         fig.show()
 
-def graf_mobile(currencies, start_year, end_year):
+# def graf_mobile(currencies, start_year, end_year):
+#     """
+#     Строит графики курсов валют за указанный период, группируя по указанным группам.
+#
+#     Args:
+#         currencies: Список валют с данными о курсах и группах.
+#         start_year: Год начала периода.
+#         end_year: Год конца периода.
+#     """
+#     # Подготовка данных для графиков по группам
+#     grouped_data = {}
+#     for currency in currencies:
+#         name = currency['name']
+#         value_data = currency['value']
+#         group = currency['group']
+#
+#         # Собираем данные для каждого года в пределах указанного диапазона
+#         for year in range(start_year, end_year + 1):
+#             year_data = value_data.get(year, {})
+#             if year_data:
+#                 if group not in grouped_data:
+#                     grouped_data[group] = {'names': set(), 'data': []}  # Используем множество
+#                 grouped_data[group]['names'].add(name)  # Добавляем имя валюты в множество
+#                 grouped_data[group]['data'].append({'name': name, 'year': year, 'data': year_data})
+#
+#     # Создаем график для каждой группы
+#     for group, data_group in grouped_data.items():
+#         fig = go.Figure()
+#         names_str = ', '.join(data_group['names'])  # Строка с уникальными именами валют
+#
+#         for data_entry in data_group['data']:
+#             name = data_entry['name']
+#             year = data_entry['year']
+#             year_data = data_entry['data']
+#
+#             # Преобразуем данные в DataFrame для удобства
+#             temp_df = pd.DataFrame(year_data.items(), columns=['Дата', 'Курс'])
+#             temp_df['Дата'] = pd.to_datetime(temp_df['Дата'], format='%d.%m.%Y')
+#
+#             # Добавляем линию в график
+#             fig.add_trace(go.Scatter(
+#                 x=temp_df['Дата'],
+#                 y=temp_df['Курс'],
+#                 mode='lines',
+#                 name=f'{name} - {year}',
+#                 hoverinfo='y+text',
+#                 text=f'{name}'  # Отображение имени валюты при наведении
+#             ))
+#
+#         # Настройка внешнего вида графика
+#         fig.update_layout(
+#             title=f'{names_str}: Курсы валют с {start_year} по {end_year} год',  # Уникальные имена валют
+#             xaxis_title='Дата',
+#             yaxis_title='Курс',
+#             xaxis=dict(
+#                 tickformat='%d.%m.%y',
+#                 tickangle=45
+#             ),
+#             hovermode='x',
+#             showlegend=False
+#         )
+#
+#     # Сохранение графика в HTML-файл
+#     file_path = "index.html"
+#     fig.write_html(file_path)
+#     return file_path  # Возвращаем путь к файлу
+
+
+SAVE_PATH = "static"  # Локальная папка для хранения файлов
+
+
+def graf_mobile(currencies, start_year, end_year, user_id):
     """
-    Строит графики курсов валют за указанный период, группируя по указанным группам.
+    Строит графики курсов валют за указанный период для конкретного пользователя.
 
     Args:
-        currencies: Список валют с данными о курсах и группах.
+        currencies: Список валют с данными о курсах.
         start_year: Год начала периода.
         end_year: Год конца периода.
+        user_id: ID пользователя для уникальной ссылки.
+
+    Returns:
+        str: Ссылка на график.
     """
-    # Подготовка данных для графиков по группам
     grouped_data = {}
+
+    # Группировка данных
     for currency in currencies:
         name = currency['name']
         value_data = currency['value']
         group = currency['group']
 
-        # Собираем данные для каждого года в пределах указанного диапазона
         for year in range(start_year, end_year + 1):
             year_data = value_data.get(year, {})
             if year_data:
                 if group not in grouped_data:
-                    grouped_data[group] = {'names': set(), 'data': []}  # Используем множество
-                grouped_data[group]['names'].add(name)  # Добавляем имя валюты в множество
+                    grouped_data[group] = {'names': set(), 'data': []}
+                grouped_data[group]['names'].add(name)
                 grouped_data[group]['data'].append({'name': name, 'year': year, 'data': year_data})
 
-    # Создаем график для каждой группы
+    # Генерация графиков
     for group, data_group in grouped_data.items():
         fig = go.Figure()
-        names_str = ', '.join(data_group['names'])  # Строка с уникальными именами валют
+        names_str = ', '.join(data_group['names'])
 
         for data_entry in data_group['data']:
             name = data_entry['name']
             year = data_entry['year']
             year_data = data_entry['data']
 
-            # Преобразуем данные в DataFrame для удобства
             temp_df = pd.DataFrame(year_data.items(), columns=['Дата', 'Курс'])
             temp_df['Дата'] = pd.to_datetime(temp_df['Дата'], format='%d.%m.%Y')
 
-            # Добавляем линию в график
             fig.add_trace(go.Scatter(
                 x=temp_df['Дата'],
                 y=temp_df['Курс'],
                 mode='lines',
                 name=f'{name} - {year}',
                 hoverinfo='y+text',
-                text=f'{name}'  # Отображение имени валюты при наведении
+                text=f'{name}'
             ))
 
-        # Настройка внешнего вида графика
         fig.update_layout(
-            title=f'{names_str}: Курсы валют с {start_year} по {end_year} год',  # Уникальные имена валют
+            title=f'{names_str}: Курсы валют с {start_year} по {end_year} год',
             xaxis_title='Дата',
             yaxis_title='Курс',
             xaxis=dict(
@@ -302,7 +375,16 @@ def graf_mobile(currencies, start_year, end_year):
             showlegend=False
         )
 
-    # Сохранение графика в HTML-файл
-    file_path = "index.html"
-    fig.write_html(file_path)
-    return file_path  # Возвращаем путь к файлу
+        # Генерация пути
+        user_folder = os.path.join(SAVE_PATH, str(user_id))
+        os.makedirs(user_folder, exist_ok=True)
+
+        names = names_str.replace(", ", "_")
+        file_name = f"{names}_{start_year}_{end_year}.html"
+        file_path = os.path.join(user_folder, file_name)
+
+        fig.write_html(file_path)  # Сохраняем HTML
+
+        # Генерируем ссылку
+        file_url = f"{config.GITHUB_PAGES}/{user_id}/{file_name}"
+        return file_url
