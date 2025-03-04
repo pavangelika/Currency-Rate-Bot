@@ -1,26 +1,13 @@
-#version: '3'
-#
-#services:
-#  postgres-inv:
-#    image: postgres
-#    container_name: postgres-container
-#    ports:
-#      - 5432:5432
-#    environment:
-#      POSTGRES_USER: myuser
-#      POSTGRES_PASSWORD: mypassword
-#      POSTGRES_DB: mydatabase
-
-version: '3.8'
-
 services:
   postgres:
     image: postgres
     container_name: postgres-container
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydatabase
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -32,12 +19,14 @@ services:
 #    container_name: bot-container
 #    depends_on:
 #      - postgres
+#    env_file:
+#      - .env
 #    environment:
 #      POSTGRES_HOST: postgres  # Имя сервиса PostgreSQL
-#      POSTGRES_PORT: 5432
-#      POSTGRES_USER: myuser
-#      POSTGRES_PASSWORD: mypassword
-#      POSTGRES_DB: mydatabase
+#      POSTGRES_PORT: ${DB_PORT}
+#      POSTGRES_DB: ${DB_NAME}
+#      POSTGRES_USER: ${DB_USER}
+#      POSTGRES_PASSWORD: ${DB_PASSWORD}
 #    restart: always
 #    entrypoint: /bin/bash -c "rm -rf /root/.cache/* && exec python main.py"
 
@@ -47,7 +36,7 @@ volumes:
 #cd C:\ANGEL\MyProjects\CurrencyRate
 #docker-compose up -d
 #dosker ps
-#docker exec -it postgres-container psql -U myuser -d mydatabase
+#docker exec -it postgres-container psql -U myuser -d db_currency_rate
 #\dt
 #\d users
 #SELECT * FROM users;
@@ -56,5 +45,11 @@ volumes:
 
 #docker-compose down
 #docker-compose build --no-cache
+
+#docker inspect 62f71247f598 | grep IPAddress
+
+
+
+
 
 

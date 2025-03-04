@@ -1,7 +1,8 @@
 # main.py
 import asyncio
+import os
+
 from aiogram import Bot, Dispatcher
-from config_data import config
 from aiogram.fsm.storage.memory import MemoryStorage
 from handlers import user_handlers
 from handlers.user_handlers import init_db
@@ -9,6 +10,10 @@ from keyboards.menu import set_main_menu
 from logger.logging_settings import logger
 from service.CbRF import currency
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from dotenv import load_dotenv
+
+# Загружаем переменные из .env
+load_dotenv()
 
 async def main():
     # Инициализация базы данных
@@ -18,7 +23,7 @@ async def main():
     storage = MemoryStorage()
 
     # Инициализируем бота и диспетчер с хранилищем
-    bot = Bot(token=config.BOT_TOKEN)
+    bot = Bot(token=os.getenv("BOT_TOKEN"))
     dp = Dispatcher(storage=storage)
 
 

@@ -13,7 +13,6 @@ from aiogram.fsm.state import StatesGroup, State, default_state
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
-from config_data import config
 
 from database.db import create_db_pool, create_table, get_everyday, get_selected_currency, \
     format_currency_from_db, get_user_by_id, update_user_everyday, add_user_to_db, update_user_currency

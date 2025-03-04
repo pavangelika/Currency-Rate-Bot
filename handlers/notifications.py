@@ -1,14 +1,14 @@
 # notifications.py
+import os
 
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from logger.logging_settings import logger
 from aiogram import Bot
-from config_data import config
 
 from service.CbRF import course_today
 
-bot = Bot(token=config.BOT_TOKEN)
+bot = Bot(token=os.getenv("BOT_TOKEN"))
 
 async def send_greeting(user_id, selected_data, day):
     """Отправляет курс валют пользователю с указанным user_id."""

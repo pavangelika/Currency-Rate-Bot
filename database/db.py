@@ -3,19 +3,21 @@ import os
 from datetime import datetime
 from asyncpg import Pool
 import asyncpg
-from config_data import config
 
 from logger.logging_settings import logger
+from dotenv import load_dotenv
 
+# Загружаем переменные из .env
+load_dotenv()
 
 async def create_db_pool():
     """Создает пул подключений к базе данных."""
     return await asyncpg.create_pool(
-        user=os.getenv("POSTGRES_USER", config.POSTGRES_USER),
-        password=os.getenv("POSTGRES_PASSWORD", config.POSTGRES_PASSWORD),
-        database=os.getenv("POSTGRES_DB", config.POSTGRES_DB),
-        host=os.getenv("POSTGRES_HOST", config.POSTGRES_HOST),
-        port=int(os.getenv("POSTGRES_PORT", config.POSTGRES_PORT)),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        host=os.getenv("DB_HOST"),
+        port=int(os.getenv("DB_PORT", 5432)),  # Значение по умолчанию
     )
 
 
