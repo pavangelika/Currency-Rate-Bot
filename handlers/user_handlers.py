@@ -411,7 +411,7 @@ async def process_year(message: Message, state: FSMContext):
     # Создаем кнопки
     button_mobile = InlineKeyboardButton(
         text="График на телефоне",
-        web_app=WebAppInfo(url=f"{config.GITHUB_PAGES}?v={int(time.time())}")
+        web_app=WebAppInfo(url=index)
     )
     button_pc = InlineKeyboardButton(
         text="График на ПК",

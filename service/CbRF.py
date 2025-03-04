@@ -388,6 +388,6 @@ def graf_mobile(currencies, start_year, end_year, user_id):
         fig.write_html(file_path)  # Сохраняем HTML
 
         # Генерируем ссылку
-        file_url = f"{config.GITHUB_PAGES}{user_id}/{file_name}"
+        file_url = f"{config.GITHUB_PAGES}static/{user_id}/{file_name}"
         upload_to_github()
         return file_url
