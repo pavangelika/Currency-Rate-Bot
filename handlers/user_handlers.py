@@ -28,8 +28,7 @@ from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_sel
 from lexicon.lexicon import CURRENCY, \
     LEXICON_GLOBAL, LEXICON_IN_MESSAGE
 from logger.logging_settings import logger
-from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile, \
-    graf_not_mobile
+from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -427,9 +426,10 @@ async def process_year(message: Message, state: FSMContext):
             text="График на телефоне",
             web_app=WebAppInfo(url=url)
         )
-        button_pc = InlineKeyboardButton(
-            text="График на ПК",
-            callback_data="pc_graph"
+
+        button_pc=InlineKeyboardButton(
+            text = "График на ПК",
+            url = url
         )
 
         button_change_years = InlineKeyboardButton(
@@ -449,35 +449,6 @@ async def process_year(message: Message, state: FSMContext):
         await message.answer("График пока недоступен. Попробуйте позже.")
     # Очищаем состояние после успешного выполнения
     await state.clear()
-
-
-@router.callback_query(F.data == "pc_graph")
-async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
-    await callback.answer('')
-    data = await state.get_data()
-    # user_dict = await state.get_data()
-    start = data.get("start")
-    end = data.get("end")
-
-    if start is None or end is None:
-        await callback.message.answer("Введите еще раз диапазон лет (например, 2022-2025 или 2025):")
-        await state.set_state(UserState.years)
-        return
-
-    user_id = callback.from_user.id
-    selected_data = await get_selected_currency(db_pool, user_id)
-
-    selected_data_list = []
-    for sd in selected_data:
-        result = dinamic_course(sd['id'])
-        name = sd['charCode']
-        result_data = parse_xml_data(result)
-        selected_data_list.append({"name": name, "value": result_data})
-
-    group_for_graf = categorize_currencies(selected_data_list)
-    graf_not_mobile(group_for_graf, start, end)
-    await state.clear()
-
 
 @router.callback_query(F.data == "in_banks")
 async def in_banks(callback: CallbackQuery, state: FSMContext):
@@ -528,7 +499,7 @@ async def process_send_photo(message: Message):
     logger.info(f"Локация пользователя {user_id} обновлена: {location_data}")
 
     if city != "Неизвестный город":
-        await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\n{city}, я угадал?')
+        await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\nЯ знаю, твой город - {city}')
     else:
         await message.reply("Похоже вы нигде...")
 
