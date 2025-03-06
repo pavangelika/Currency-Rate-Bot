@@ -19,6 +19,7 @@ from database.db import create_db_pool, create_table, get_everyday, get_selected
 from github.check_url import check_file_available
 from github.downloading import send_loading_message
 from handlers import selected_currency
+from parsing.bank import parse_cities, get_city_link, parse_bank_branches
 from service.geocoding import get_city_by_coordinates
 from states.state import UserState
 from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
@@ -392,8 +393,6 @@ async def process_year(message: Message, state: FSMContext):
         await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
         return
 
-
-
     # Сохраняем данные в state
     await state.update_data(start=start, end=end)
 
@@ -434,7 +433,7 @@ async def process_year(message: Message, state: FSMContext):
         )
 
         button_change_years = InlineKeyboardButton(
-            text = "Выбрать другой диапозон лет",
+            text="Выбрать другой диапозон лет",
             callback_data="change_years"
         )
 
@@ -480,24 +479,22 @@ async def btn_graf_not_mobile(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
-#
-# @router.callback_query(F.data == "in_banks")
-# async def in_banks(callback: CallbackQuery, state: FSMContext):
-#     main = InlineKeyboardMarkup(inline_keyboard=[  # Заместо keyboard, теперь inline_keyboard
-#         [InlineKeyboardButton(text='Курс валют в банках', url='https://1000bankov.ru/kurs/')],
-#         # [InlineKeyboardButton(text='Следить за курсом продажи', callback_data='look_for_sale')],
-#         # [InlineKeyboardButton(text='Следить за курсом покупки', callback_data='look_for_buy')]
-#     ])
-#
-#     await callback.answer("")
-#
-#     await callback.message.answer('️Сравните курсы валют в вашем городе за секунды! \n'
-#                                   'Купите валюту выгодно! \n'
-#                                   'Продайте валюту по лучшей цене! \n', reply_markup=main)
-#
-#
-#     # await callback.message.answer("Для показа курс валют в банках вашего города требуется узнать ваш город:", reply_markup=keyboard)
-#
+@router.callback_query(F.data == "in_banks")
+async def in_banks(callback: CallbackQuery, state: FSMContext):
+    main = InlineKeyboardMarkup(inline_keyboard=[  # Заместо keyboard, теперь inline_keyboard
+        [InlineKeyboardButton(text='Курс валют в банках', url='https://1000bankov.ru/kurs/')],
+        # [InlineKeyboardButton(text='Следить за курсом продажи', callback_data='look_for_sale')],
+        # [InlineKeyboardButton(text='Следить за курсом покупки', callback_data='look_for_buy')]
+    ])
+
+    await callback.answer("")
+
+    await callback.message.answer('️Сравните курсы валют в вашем городе за секунды! \n'
+                                  'Купите валюту выгодно! \n'
+                                  'Продайте валюту по лучшей цене! \n', reply_markup=main)
+
+    # await callback.message.answer("Для показа курс валют в банках вашего города требуется узнать ваш город:", reply_markup=keyboard)
+
 
 @router.message(F.content_type == ContentType.LOCATION)
 async def process_send_photo(message: Message):
@@ -534,6 +531,16 @@ async def process_send_photo(message: Message):
         await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\n{city}, я угадал?')
     else:
         await message.reply("Похоже вы нигде...")
+
+    # await parse_cities()
+    city_link = get_city_link(city)
+    if city_link:
+        logger.info(f"Ссылка для города {city}: {city_link}")
+        bank_branches = await parse_bank_branches(city_link)
+        print(bank_branches)
+    else:
+        logger.info(f"Город {city} не найден.")
+
 
 
 @router.message(Command(commands=["currency"]))
