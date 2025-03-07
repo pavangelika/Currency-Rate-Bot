@@ -574,16 +574,6 @@ async def process_sorry(message: Message):
         await message.reply(text='Извини, 🥺 я не умею обрабатывать видео.')
 
 
-# @router.message(F.content_type.in_({ContentType.STICKER, ContentType.ANIMATION, ContentType.TEXT}))
-# async def process_text_sticker_animation(message: Message):
-#     if message.text:
-#         await message.reply(text=message.text)
-#     elif message.sticker:
-#         await message.reply_sticker(message.sticker.file_id)  # Отправляем стикер
-#     elif message.animation:
-#         await message.reply_animation(message.animation.file_id)  # Отправляем гифку
-
-
 @router.message(Command("users"))
 async def info(message: Message, state: FSMContext):
     user_id = message.from_user.id
