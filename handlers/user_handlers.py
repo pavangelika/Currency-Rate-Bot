@@ -14,7 +14,7 @@ from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
 
 from database.db import create_db_pool, create_table, get_everyday, get_selected_currency, \
-    format_currency_from_db, get_user_by_id, update_user_everyday, add_user_to_db, update_user_currency
+    format_currency_from_db, update_user_everyday, add_user_to_db, update_user_currency
 from github.check_url import check_file_available
 from github.downloading import send_loading_message
 from handlers.notifications import schedule_daily_greeting, schedule_unsubscribe
@@ -23,7 +23,7 @@ from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_sel
 from lexicon.lexicon import CURRENCY, \
     LEXICON_GLOBAL, LEXICON_IN_MESSAGE
 from logger.logging_settings import logger
-from parsing.bank import get_city_link, parse_bank_branches
+from parsing.bank import get_city_link
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile
 from service.geocoding import get_city_by_coordinates
 from states.state import UserState
@@ -89,6 +89,51 @@ async def process_start_handler(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == get_lexicon_data("start")["btn"])
 @router.callback_query(F.data == get_lexicon_data("select_rate")["command"])
+@router.message(Command(commands=["currency"]))
+async def my_currency(message: Message, state: FSMContext):
+    """Обработчик последней кнопки."""
+    await state.clear()
+    user_id = message.from_user.id
+    currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
+    currency_data = load_currency_data(currency_file_path)
+
+    # Получаем данные из базы данных
+    db_result = await get_selected_currency(db_pool, user_id)
+
+    # Форматируем результат
+    formatted_result = await format_currency_from_db(db_result)
+
+    # Проверка, что formatted_result является строкой
+    if not formatted_result:
+        logger.error("Formatted result is empty or None!")
+        formatted_result = "Не удалось получить данные о валютах."
+
+    # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+
+    for button_data in LEXICON_IN_MESSAGE:
+        item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
+        if item:
+            if item["command"] in ["everyday"]:
+                everyday = await get_everyday(db_pool, user_id)
+                btn_key = "btn2" if everyday == True else "btn1"  # Выбираем кнопку в зависимости от состояния
+                btn_text = item.get(btn_key, button_data.get(btn_key))
+            else:
+                btn_text = item.get("btn", button_data.get("btn"))
+
+            if btn_text:
+                keyboard.inline_keyboard.append(
+                    [InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
+
+    select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == "select_rate"), None)
+
+    # Обрабатываем список валют, добавляя их на новую строку
+    formatted_result = "\n".join(formatted_result.split(", "))  # Разбиваем на строки по запятой и пробелу
+
+    # Отправляем сообщение с клавиатурой
+    await message.answer(f"{select_rate_data['notification_true']}\n{formatted_result}", reply_markup=keyboard)
+
+
 @router.message(Command(commands=["select_rate"]))
 async def handle_currency_selection(event: Message | CallbackQuery, state: FSMContext):
     """
@@ -97,6 +142,7 @@ async def handle_currency_selection(event: Message | CallbackQuery, state: FSMCo
     """
     try:
         # Инициализируем состояние
+        await state.clear()
         await state.update_data(selected_buttons=set(), selected_names=set())
 
         # Создаем клавиатуру
@@ -238,6 +284,7 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
     Поддерживает как команду /today, так и callback от кнопки "Курс ЦБ сегодня".
     """
     try:
+        await state.clear()
         user_id = event.from_user.id
         selected_data = await get_selected_currency(db_pool, user_id)
         today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
@@ -252,8 +299,9 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
 
 
 @router.message(Command(commands=["everyday"]))
-async def everyday_handlers(message: Message):
+async def everyday_handlers(message: Message, state: FSMContext):
     # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
+    await state.clear()
     user_id = message.from_user.id
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
@@ -331,9 +379,22 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
             logger.error(f"Error in send_today_schedule_handler: {e}")
 
 
+@router.message(F.content_type.in_({ContentType.PHOTO, ContentType.DOCUMENT, ContentType.VOICE, ContentType.VIDEO}))
+async def process_sorry(message: Message):
+    if message.photo:
+        await message.reply(text='Извини, 🥺 я не умею обрабатывать фото.')
+    elif message.document:
+        await message.reply(text='Извини, 🥺 я не умею обрабатывать документы.')
+    elif message.voice:
+        await message.reply(text='Извини, 🥺 я не умею слушать звуковые сообщения.')
+    elif message.video:
+        await message.reply(text='Извини, 🥺 я не умею обрабатывать видео.')
+
+
 @router.message(Command(commands=["chart"]))
 @router.callback_query(F.data.in_([get_lexicon_data("chart")["command"], "change_years"]))
 async def request_year(event: Message | CallbackQuery, state: FSMContext):
+    await state.clear()
     # Получаем user_id в зависимости от типа event
     if isinstance(event, CallbackQuery):
         await event.answer('')
@@ -345,113 +406,10 @@ async def request_year(event: Message | CallbackQuery, state: FSMContext):
     await state.set_state(UserState.years)
 
 
-@router.message(UserState.years)
-async def process_year(message: Message, state: FSMContext):
-    """Обрабатывает введенный диапазон лет и выводит клавиатуру."""
-    user_id = message.from_user.id
-    user_dict = await state.get_data()
-    user_input = message.text.strip()
-    current_year = datetime.date.today().year  # Получаем текущий год
-
-    # Если пользователь ввел команду (начинается с "/"), очищаем состояние и выходим
-    if user_input.startswith("/"):
-        await state.clear()
-        logger.info(f'User {user_id} input command {user_input}')
-        return
-
-    if user_input in ["отмена", "cancel"]:
-        await state.clear()
-        return
-
-    # Определяем, введен один год или диапазон
-    if '-' in user_input:
-        years = user_input.split('-')
-        if len(years) != 2:
-            await message.answer("Некорректный ввод. Введите диапазон лет в формате '2022-2025'.")
-            return
-        try:
-            start, end = map(int, years)
-        except ValueError:
-            await message.answer("Некорректный ввод. Используйте числа, например '2022-2025'.")
-            return
-    else:
-        try:
-            start = end = int(user_input)
-        except ValueError:
-            await message.answer("Некорректный ввод. Введите год в формате '2025'.")
-            return
-
-    # Проверяем корректность диапазона лет
-    if start > end:
-        await message.answer("Ошибка. Начальный год не может быть больше конечного.")
-        return
-
-    if end > current_year:
-        await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
-        return
-
-    # Сохраняем данные в state
-    await state.update_data(start=start, end=end)
-
-    # Генерация данных для графика
-    selected_data = await get_selected_currency(db_pool, user_id)
-
-    if selected_data is None:
-        await message.answer("Ошибка: у вас нет выбранных валют.")
-        return
-
-    selected_data_list = []
-    for sd in selected_data:
-        result = dinamic_course(sd['id'])
-        name = sd['charCode']
-        result_data = parse_xml_data(result)
-        selected_data_list.append({"name": name, "value": result_data})
-
-    group_for_graf = categorize_currencies(selected_data_list)
-    url = graf_mobile(group_for_graf, start, end, user_id)
-    logger.info(url)
-    logger.info(f"File index.html updated: {os.path.exists(url)}")
-
-    # Отправляем анимационное сообщение пользователю
-    loading_task = asyncio.create_task(send_loading_message(message))
-
-    # Проверяем доступность файла
-    if await check_file_available(url):
-        await loading_task  # Дожидаемся окончания анимации
-
-        # Отправляем кнопки после загрузки
-        button_mobile = InlineKeyboardButton(
-            text="График на телефоне",
-            web_app=WebAppInfo(url=url)
-        )
-
-        button_pc = InlineKeyboardButton(
-            text="График на ПК",
-            url=url
-        )
-
-        button_change_years = InlineKeyboardButton(
-            text="Выбрать другой диапозон лет",
-            callback_data="change_years"
-        )
-
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [button_mobile],
-            [button_pc],
-            [button_change_years]
-        ])
-
-        await message.answer("График готов! Нажмите на кнопку ниже:", reply_markup=keyboard)
-    else:
-        await loading_task  # Дожидаемся окончания анимации
-        await message.answer("График пока недоступен. Попробуйте позже.")
-    # Очищаем состояние после успешного выполнения
-    await state.clear()
-
-
 @router.callback_query(F.data == "in_banks")
 @router.message(Command(commands=["in_banks"]))
 async def in_banks(event: Message | CallbackQuery, state: FSMContext):
+    await state.clear()
     if isinstance(event, CallbackQuery):
         await event.answer('')
         message = event.message  # Для callback_query используем message из event
@@ -518,64 +476,99 @@ async def get_link_city(message: Message, state: FSMContext):
                              reply_markup=keyboard)
 
 
-@router.message(Command(commands=["currency"]))
-async def my_currency(message: Message, state: FSMContext):
-    """Обработчик последней кнопки."""
+@router.message(UserState.years)
+async def process_year(message: Message, state: FSMContext):
+    """Обрабатывает введенный диапазон лет и выводит клавиатуру."""
     user_id = message.from_user.id
-    currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
-    currency_data = load_currency_data(currency_file_path)
+    user_dict = await state.get_data()
+    user_input = message.text.strip()
+    current_year = datetime.date.today().year  # Получаем текущий год
 
-    # Получаем данные из базы данных
-    db_result = await get_selected_currency(db_pool, user_id)
+    # Если пользователь ввел команду (начинается с "/"), очищаем состояние и выходим
+    if user_input.startswith("/") or user_input in ["отмена", "cancel"]:
+        await state.clear()
+        return
 
-    # Форматируем результат
-    formatted_result = await format_currency_from_db(db_result)
+    # Определяем, введен один год или диапазон
+    if '-' in user_input:
+        years = user_input.split('-')
+        if len(years) != 2:
+            await message.answer("Некорректный ввод. Введите диапазон лет в формате '2022-2025'.")
+            return
+        try:
+            start, end = map(int, years)
+        except ValueError:
+            await message.answer("Некорректный ввод. Используйте числа, например '2022-2025'.")
+            return
+    else:
+        try:
+            start = end = int(user_input)
+        except ValueError:
+            await message.answer("Некорректный ввод. Введите год в формате '2025'.")
+            return
 
-    # Проверка, что formatted_result является строкой
-    if not formatted_result:
-        logger.error("Formatted result is empty or None!")
-        formatted_result = "Не удалось получить данные о валютах."
+    # Проверяем корректность диапазона лет
+    if start > end:
+        await message.answer("Ошибка. Начальный год не может быть больше конечного.")
+        return
 
-    # Создаем клавиатуру с кнопками из LEXICON_GLOBAL
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+    if end > current_year:
+        await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
+        return
 
-    for button_data in LEXICON_IN_MESSAGE:
-        item = next((item for item in LEXICON_GLOBAL if item["command"] == button_data["command"]), None)
-        if item:
-            if item["command"] in ["everyday"]:
-                everyday = await get_everyday(db_pool, user_id)
-                btn_key = "btn2" if everyday == True else "btn1"  # Выбираем кнопку в зависимости от состояния
-                btn_text = item.get(btn_key, button_data.get(btn_key))
-            else:
-                btn_text = item.get("btn", button_data.get("btn"))
+    # Сохраняем данные в state
+    await state.update_data(start=start, end=end)
 
-            if btn_text:
-                keyboard.inline_keyboard.append(
-                    [InlineKeyboardButton(text=btn_text, callback_data=item["command"])])
+    # Генерация данных для графика
+    selected_data = await get_selected_currency(db_pool, user_id)
 
-    select_rate_data = next((item for item in LEXICON_GLOBAL if item["command"] == "select_rate"), None)
+    if selected_data is None:
+        await message.answer("Ошибка: у вас нет выбранных валют.")
+        return
 
-    # Обрабатываем список валют, добавляя их на новую строку
-    formatted_result = "\n".join(formatted_result.split(", "))  # Разбиваем на строки по запятой и пробелу
+    selected_data_list = []
+    for sd in selected_data:
+        result = dinamic_course(sd['id'])
+        name = sd['charCode']
+        result_data = parse_xml_data(result)
+        selected_data_list.append({"name": name, "value": result_data})
 
-    # Отправляем сообщение с клавиатурой
-    await message.answer(f"{select_rate_data['notification_true']}\n{formatted_result}", reply_markup=keyboard)
+    group_for_graf = categorize_currencies(selected_data_list)
+    url = graf_mobile(group_for_graf, start, end)
+    logger.info(url)
 
+    # Отправляем анимационное сообщение пользователю
+    loading_task = asyncio.create_task(send_loading_message(message))
 
-@router.message(F.content_type.in_({ContentType.PHOTO, ContentType.DOCUMENT, ContentType.VOICE, ContentType.VIDEO}))
-async def process_sorry(message: Message):
-    if message.photo:
-        await message.reply(text='Извини, 🥺 я не умею обрабатывать фото.')
-    elif message.document:
-        await message.reply(text='Извини, 🥺 я не умею обрабатывать документы.')
-    elif message.voice:
-        await message.reply(text='Извини, 🥺 я не умею слушать звуковые сообщения.')
-    elif message.video:
-        await message.reply(text='Извини, 🥺 я не умею обрабатывать видео.')
+    # Проверяем доступность файла
+    if await check_file_available(url):
+        await loading_task  # Дожидаемся окончания анимации
 
+        # Отправляем кнопки после загрузки
+        button_mobile = InlineKeyboardButton(
+            text="График на телефоне",
+            web_app=WebAppInfo(url=url)
+        )
 
-@router.message(Command("users"))
-async def info(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    users = await get_user_by_id(db_pool, user_id)
-    logger.info(users)
+        button_pc = InlineKeyboardButton(
+            text="График на ПК",
+            url=url
+        )
+
+        button_change_years = InlineKeyboardButton(
+            text="Выбрать другой диапозон лет",
+            callback_data="change_years"
+        )
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [button_mobile],
+            [button_pc],
+            [button_change_years]
+        ])
+
+        await message.answer("График готов! Нажмите на кнопку ниже:", reply_markup=keyboard)
+    else:
+        await loading_task  # Дожидаемся окончания анимации
+        await message.answer("График пока недоступен. Попробуйте позже.")
+    # Очищаем состояние после успешного выполнения
+    await state.clear()

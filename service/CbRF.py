@@ -172,7 +172,7 @@ def categorize_currencies(currencies):
 SAVE_PATH = "static"  # Локальная папка для хранения файлов
 
 
-def graf_mobile(currencies, start_year, end_year, user_id):
+def graf_mobile(currencies, start_year, end_year):
     """
     Строит графики курсов валют за указанный период для конкретного пользователя.
 
@@ -180,7 +180,6 @@ def graf_mobile(currencies, start_year, end_year, user_id):
         currencies: Список валют с данными о курсах.
         start_year: Год начала периода.
         end_year: Год конца периода.
-        user_id: ID пользователя для уникальной ссылки.
 
     Returns:
         str: Ссылка на график.
@@ -248,7 +247,6 @@ def graf_mobile(currencies, start_year, end_year, user_id):
         fig.write_html(file_path)  # Сохраняем HTML
 
         # Генерируем ссылку
-        # file_url = f"{os.getenv("GITHUB_PAGES")}static/{user_id}/{file_name}"
         file_url = f"{os.getenv("GITHUB_PAGES")}static/{file_name}"
         upload_to_github()
         return file_url
