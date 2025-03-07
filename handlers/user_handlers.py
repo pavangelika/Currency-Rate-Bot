@@ -497,10 +497,10 @@ async def process_send_photo(message: Message):
 
     logger.info(f"Локация пользователя {user_id} обновлена: {location_data}")
 
-    if city != "Неизвестный город":
-        await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\nЯ знаю, твой город - {city}')
-    else:
-        await message.reply("Похоже вы нигде...")
+    # if city != "Неизвестный город":
+    #     await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\nТвой город - {city}')
+    # else:
+    #     await message.reply("Похоже вы нигде...")
 
     # await parse_cities()
     city_link = get_city_link(city)
