@@ -3,7 +3,6 @@ import time
 from pathlib import Path
 
 import git
-import shutil
 
 from logger.logging_settings import logger
 
