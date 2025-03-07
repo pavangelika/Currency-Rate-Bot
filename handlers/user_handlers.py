@@ -450,24 +450,30 @@ async def process_year(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data == "in_banks")
-async def in_banks(callback: CallbackQuery, state: FSMContext):
-    main = InlineKeyboardMarkup(inline_keyboard=[  # Заместо keyboard, теперь inline_keyboard
-        [InlineKeyboardButton(text='Курс валют в банках', url='https://1000bankov.ru/kurs/')],
-        # [InlineKeyboardButton(text='Следить за курсом продажи', callback_data='look_for_sale')],
-        # [InlineKeyboardButton(text='Следить за курсом покупки', callback_data='look_for_buy')]
-    ])
-
-    await callback.answer("")
-
-    await callback.message.answer('️Сравните курсы валют в вашем городе за секунды! \n'
-                                  'Купите валюту выгодно! \n'
-                                  'Продайте валюту по лучшей цене! \n', reply_markup=main)
-
-    # await callback.message.answer("Для показа курс валют в банках вашего города требуется узнать ваш город:", reply_markup=keyboard)
+@router.message(Command(commands=["in_banks"]))
+async def in_banks(event: Message | CallbackQuery, state: FSMContext):
+    if isinstance(event, CallbackQuery):
+        await event.answer('')
+        message = event.message  # Для callback_query используем message из event
+    else:
+        message = event  # Для message используем сам event
+    await message.answer(
+        "Для показа курса валют отправьте вашу локацию в этот чат")
+    await state.set_state(UserState.location)
 
 
-@router.message(F.content_type == ContentType.LOCATION)
-async def process_send_photo(message: Message):
+@router.message(UserState.location)
+async def get_link_city(message: Message, state: FSMContext):
+    # Проверяем, есть ли текст в сообщении
+    if message.text and (message.text.startswith("/") or message.text.lower() in ["отмена", "cancel"]):
+        await state.clear()
+        return
+
+    # Проверяем, есть ли геолокация в сообщении
+    if not message.location:
+        await message.answer("Пожалуйста, отправьте вашу геолокацию.")
+        return
+
     user_id = message.from_user.id
     latitude = message.location.latitude
     longitude = message.location.longitude
@@ -497,19 +503,19 @@ async def process_send_photo(message: Message):
 
     logger.info(f"Локация пользователя {user_id} обновлена: {location_data}")
 
-    # if city != "Неизвестный город":
-    #     await message.reply(f'Широта: {latitude} \nДолгота: {longitude}.\nТвой город - {city}')
-    # else:
-    #     await message.reply("Похоже вы нигде...")
-
-    # await parse_cities()
-    city_link = get_city_link(city)
-    if city_link:
-        logger.info(f"Ссылка для города {city}: {city_link}")
-        bank_branches = await parse_bank_branches(city_link)
-        print(bank_branches)
+    if city != "Неизвестный город":
+        city_link = get_city_link(city)
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text=f'Курс валют в банках города {city}', url=city_link)]
+                             ])
+        await message.answer("Перейдите по ссылке и сравнивайте курсы валют в вашем городе за секунды ",
+                             reply_markup=keyboard)
     else:
-        logger.info(f"Город {city} не найден.")
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text='Курс валют в банках', url='https://1000bankov.ru/kurs/')]
+                             ])
+        await message.answer("Перейдите по ссылке и сравнивайте курсы валют в вашем городе за секунды ",
+                             reply_markup=keyboard)
 
 
 @router.message(Command(commands=["currency"]))
