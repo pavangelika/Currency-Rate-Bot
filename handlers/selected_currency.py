@@ -1,5 +1,6 @@
 # Функция для извлечения кода валюты из строки
 import json
+
 from logger.logging_settings import logger
 
 
@@ -10,6 +11,7 @@ def extract_currency_code(currency_str):
     if '(' in currency_str and ')' in currency_str:
         return currency_str.split('(')[-1].rstrip(')')
     return None
+
 
 def update_selected_currency(db_result, user_id, currency_data):
     """
@@ -29,7 +31,6 @@ def update_selected_currency(db_result, user_id, currency_data):
             if matched_currency:
                 updated_currencies.append(matched_currency)
     logger.info(f'updated_currencies {updated_currencies}')
-
 
     return updated_currencies  # Возвращаем обновленный список валют
 

@@ -1,14 +1,15 @@
 # notifications.py
 import os
 
+from aiogram import Bot
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from logger.logging_settings import logger
-from aiogram import Bot
 
+from logger.logging_settings import logger
 from service.CbRF import course_today
 
 bot = Bot(token=os.getenv("BOT_TOKEN"))
+
 
 async def send_greeting(user_id, selected_data, day):
     """Отправляет курс валют пользователю с указанным user_id."""
@@ -29,18 +30,19 @@ def schedule_daily_greeting(user_id, scheduler, selected_data, day):
         logger.info(f"Task {job_id} already exists. Skipping addition")
         return
     else:
-            try:
-                scheduler.add_job(
-                    send_greeting,
-                    CronTrigger(hour=7, minute=00, timezone='Europe/Moscow'),
-                    args=[user_id, selected_data, day],
-                    id=job_id
-                )
-                logger.info(f"Success. Task ID {job_id} has been added to scheduler.")
-            except Exception as e:
-                logger.error(e)
+        try:
+            scheduler.add_job(
+                send_greeting,
+                CronTrigger(hour=7, minute=00, timezone='Europe/Moscow'),
+                args=[user_id, selected_data, day],
+                id=job_id
+            )
+            logger.info(f"Success. Task ID {job_id} has been added to scheduler.")
+        except Exception as e:
+            logger.error(e)
 
-def schedule_interval_greeting(user_id, scheduler, selected_data, day): # Добавили scheduler в параметры
+
+def schedule_interval_greeting(user_id, scheduler, selected_data, day):  # Добавили scheduler в параметры
     """Запланировать отправку 'Привет!' каждые 30 секунд."""
     job_id = f"interval_greeting_{user_id}"
     if scheduler.get_job(job_id):
@@ -82,6 +84,7 @@ async def send_reminder_message(user_id, reminder_text):
         logger.info(f"Success. Reminder has been sent {user_id}")
     except Exception as e:
         logger.error(f"Error. Reminder has not been sent: {e}")
+
 
 def schedule_unsubscribe(job_id, scheduler):
     # Удаляем задачи из расписания

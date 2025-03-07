@@ -33,6 +33,7 @@ def currency():
 
     return currencies
 
+
 def course_today(selected_data, day):
     """ Получение курса валют из списка выбранных валют и заданного дня """
     try:
@@ -79,7 +80,6 @@ def course_today(selected_data, day):
         logger.exception(e)
 
 
-
 def dinamic_course(cod):
     today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
     url = f"https://www.cbr.ru/scripts/XML_dynamic.asp?date_req1=02/03/2001&date_req2={today}&VAL_NM_RQ={cod}"
@@ -113,24 +113,17 @@ def parse_xml_data(xml_data):
         date_str = record.get('Date')  # 4
         year = int(date_str.split('.')[2])  # 5
         try:
-          value = float(record.find('Value').text.replace(',', '.')) / float(record.find('Nominal').text) # 6
+            value = float(record.find('Value').text.replace(',', '.')) / float(record.find('Nominal').text)  # 6
         except Exception as e:
-          print(e)
+            print(e)
         data.setdefault(year, {})[date_str] = value  # 7
     return data  # 8
 
-# selected_data_list = []
-# for sd in selected_data:
-#     result = dinamic_course(sd['id'])
-#     name = sd['charCode']
-#     with open(f'{name}.xml', 'wb') as f:
-#       f.write(result)
-#     result_data = parse_xml_data(result)
-#     selected_data_list.append({"name":name, "value":result_data})
 
 import datetime
 import requests
 import xml.etree.ElementTree as ET
+
 
 def categorize_currencies(currencies):
     """
@@ -177,6 +170,7 @@ def categorize_currencies(currencies):
 
 
 SAVE_PATH = "static"  # Локальная папка для хранения файлов
+
 
 def graf_mobile(currencies, start_year, end_year, user_id):
     """

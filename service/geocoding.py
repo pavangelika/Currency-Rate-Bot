@@ -1,5 +1,4 @@
 import aiohttp
-import json
 
 from logger.logging_settings import logger
 

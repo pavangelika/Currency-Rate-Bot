@@ -1,14 +1,15 @@
 import json
 import os
 from datetime import datetime
-from asyncpg import Pool
+
 import asyncpg
+from dotenv import load_dotenv
 
 from logger.logging_settings import logger
-from dotenv import load_dotenv
 
 # Загружаем переменные из .env
 load_dotenv()
+
 
 async def create_db_pool():
     """Создает пул подключений к базе данных."""
@@ -73,6 +74,7 @@ async def add_user_to_db(pool, user_data):
         logger.error(f"Error adding user to the database: {e}")
         raise
 
+
 async def update_user_everyday(pool, user_id, everyday):
     """Обновляет статус ежедневной рассылки пользователя в БД."""
     try:
@@ -118,10 +120,6 @@ async def update_user_currency(pool: asyncpg.Pool, user_id: int, selected_curren
         raise
 
 
-
-
-
-
 async def get_user_by_id(pool, user_id):
     """Возвращает данные пользователя по его ID."""
     try:
@@ -148,7 +146,6 @@ async def get_selected_currency(pool: asyncpg.Pool, user_id: int):
     except Exception as e:
         logger.error(f"Error fetching selected_currency for {user_id} from the database: {e}")
         return []
-
 
 
 async def get_everyday(pool, user_id):

@@ -1,5 +1,7 @@
-import aiohttp
 import asyncio
+
+import aiohttp
+
 
 async def check_file_available(url, retries=10, delay=5):
     """

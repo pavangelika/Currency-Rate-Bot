@@ -3,14 +3,13 @@ import asyncio
 import datetime
 import json
 import os
-import time
 
 from aiogram import Router, F
 from aiogram.enums import ContentType
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State, default_state
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.fsm.state import default_state
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
 
@@ -18,17 +17,16 @@ from database.db import create_db_pool, create_table, get_everyday, get_selected
     format_currency_from_db, get_user_by_id, update_user_everyday, add_user_to_db, update_user_currency
 from github.check_url import check_file_available
 from github.downloading import send_loading_message
-from handlers import selected_currency
-from parsing.bank import parse_cities, get_city_link, parse_bank_branches
-from service.geocoding import get_city_by_coordinates
-from states.state import UserState
-from handlers.notifications import schedule_daily_greeting, schedule_interval_greeting, schedule_unsubscribe
+from handlers.notifications import schedule_daily_greeting, schedule_unsubscribe
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
     LEXICON_GLOBAL, LEXICON_IN_MESSAGE
 from logger.logging_settings import logger
+from parsing.bank import get_city_link, parse_bank_branches
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile
+from service.geocoding import get_city_by_coordinates
+from states.state import UserState
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -427,9 +425,9 @@ async def process_year(message: Message, state: FSMContext):
             web_app=WebAppInfo(url=url)
         )
 
-        button_pc=InlineKeyboardButton(
-            text = "График на ПК",
-            url = url
+        button_pc = InlineKeyboardButton(
+            text="График на ПК",
+            url=url
         )
 
         button_change_years = InlineKeyboardButton(
@@ -449,6 +447,7 @@ async def process_year(message: Message, state: FSMContext):
         await message.answer("График пока недоступен. Попробуйте позже.")
     # Очищаем состояние после успешного выполнения
     await state.clear()
+
 
 @router.callback_query(F.data == "in_banks")
 async def in_banks(callback: CallbackQuery, state: FSMContext):
@@ -511,7 +510,6 @@ async def process_send_photo(message: Message):
         print(bank_branches)
     else:
         logger.info(f"Город {city} не найден.")
-
 
 
 @router.message(Command(commands=["currency"]))

@@ -1,8 +1,7 @@
-import os
 import json
-import asyncio
+import os
+
 from playwright.async_api import async_playwright
-from bs4 import BeautifulSoup
 
 from logger.logging_settings import logger
 
@@ -16,147 +15,137 @@ save_folder = os.path.join(project_root, "save_files")
 if not os.path.exists(save_folder):
     os.makedirs(save_folder)
 
+
 async def parse_cities():
     """
-    Парсит список городов и их ссылок с сайта 1000bankov.ru.
+    Парсит список городов и их ссылок с сайта 1000bankov.ru без использования BeautifulSoup.
     Возвращает словарь с городами и ссылками.
     """
     async with async_playwright() as p:
-        # Запуск браузера
-        browser = await p.chromium.launch(headless=False)  # headless=False для отладки  # headless=True для скрытого режима
+        browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
 
-        # Переход на страницу
-        await page.goto('https://1000bankov.ru/kurs/')
-
-        # Клик на элемент для открытия списка городов
-        # Ожидание появления элемента и клик
         try:
-            # Ждем появления элемента
-            await page.wait_for_selector('div.header__geo.geolink', timeout=5000)
+            await page.goto('https://1000bankov.ru/kurs/')
 
-            # Клик на элемент
+            # Кликаем по элементу, чтобы открыть список городов
+            await page.wait_for_selector('div.header__geo.geolink', timeout=5000)
             await page.click('div.header__geo.geolink')
 
-            # Ждем, пока список городов загрузится
+            # Ожидаем загрузки списка городов
             await page.wait_for_timeout(2000)
+
+            # Извлекаем все <li> внутри #geo__columns
+            city_elements = await page.query_selector_all('#geo__columns li a')
+
+            cities_dict = {}
+            for city in city_elements:
+                city_name = await city.inner_text()
+                city_href = await city.get_attribute('href')
+                if city_name and city_href:
+                    cities_dict[city_name.strip()] = city_href
+
+            return save_cities_to_json(cities_dict)
+
         except Exception as e:
-            print(f"Ошибка при клике на элемент: {e}")
-            await browser.close()
+            logger.error(f"Ошибка при парсинге городов: {e}")
             return {}
 
-        await page.wait_for_timeout(2000)  # Ждем, пока список городов загрузится
-
-        # Получаем HTML после клика
-        content = await page.content()
-
-        # Парсим HTML с помощью BeautifulSoup
-        soup = BeautifulSoup(content, 'html.parser')
-
-        # Находим все элементы <li> внутри #geo__columns
-        city_list = soup.select('#geo__columns li')
-
-        # Создаем словарь с городами и ссылками
-        cities_dict = {}
-        for li in city_list:
-            a_tag = li.find('a')
-            if a_tag:
-                city_name = a_tag.text.strip()
-                city_href = a_tag['href']
-                cities_dict[city_name] = city_href
-
-        # Закрываем браузер
-        await browser.close()
-        return save_cities_to_json(cities_dict)
+        finally:
+            await browser.close()
 
 
 def save_cities_to_json(cities_dict):
     """
     Сохраняет словарь с городами и ссылками в JSON-файл.
-
-    :param cities_dict: Словарь с городами и ссылками.
     """
-    # Путь к JSON-файлу
     json_file_path = os.path.join(save_folder, "cities.json")
 
-    # Сохраняем cities_dict в JSON-файл
     with open(json_file_path, "w", encoding="utf-8") as f:
         json.dump(cities_dict, f, ensure_ascii=False, indent=4)
 
     logger.info(f"Словарь сохранен в файл: {json_file_path}")
 
+
 def get_city_link(city_name):
     """
     Возвращает ссылку для указанного города из JSON-файла.
-
-    :param city_name: Название города (например, "Абаза").
-    :return: Ссылка на страницу города или None, если город не найден.
     """
-    # Путь к JSON-файлу
     json_file_path = os.path.join(save_folder, "cities.json")
 
-    # Чтение JSON-файла
     try:
         with open(json_file_path, "r", encoding="utf-8") as f:
             cities_data = json.load(f)
-    except FileNotFoundError:
-        logger.error(f"Файл {json_file_path} не найден.")
-        return None
-    except json.JSONDecodeError:
-        logger.error(f"Ошибка при чтении файла {json_file_path}.")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"Ошибка при чтении файла {json_file_path}: {e}")
         return None
 
-    # Поиск ссылки по названию города
     return cities_data.get(city_name)
 
 
 async def parse_bank_branches(url):
     """
-    Парсит названия банков и количество отделений по url города на сайте https://1000bankov.ru/kurs/.
+    Парсит названия банков и количество отделений по url города на сайте 1000bankov.ru.
     Возвращает словарь с названиями банков и количеством отделений.
     """
     async with async_playwright() as p:
-        # Запуск браузера в headless-режиме
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
 
-        await page.goto(url)
-        await page.wait_for_timeout(30000)
-        # Получаем HTML-код страницы
-        content = await page.content()
+        try:
+            # Переход на страницу с ожиданием полной загрузки
+            await page.goto(url, wait_until='networkidle', timeout=90000)
+            logger.info("Страница загружена")
 
-        # Закрываем браузер
-        await browser.close()
+            # Ожидание появления блоков с банками
+            await page.wait_for_selector('div.banks__item', state='visible')
+            logger.info("Блоки с банками найдены")
 
-        # Парсим HTML с помощью BeautifulSoup
-        soup = BeautifulSoup(content, 'html.parser')
+            # Извлекаем все блоки с банками
+            bank_blocks = await page.query_selector_all('div.banks__item')
+            logger.info(f"Найдено {len(bank_blocks)} банков")
 
-        # Находим все блоки с банками
-        bank_blocks = soup.select('div.banks__item')
+            bank_branches = {}
 
-        # Создаем словарь для хранения результатов
-        bank_branches = {}
+            for block in bank_blocks:
+                try:
+                    # Название банка
+                    bank_name_element = await block.query_selector('div.bank__title')
+                    if bank_name_element:
+                        bank_name = await bank_name_element.inner_text()
+                        logger.info(f"Название банка: {bank_name}")
+                    else:
+                        logger.warning("Элемент с названием банка не найден")
+                        continue
 
-        # Обрабатываем каждый блок с банком
-        for block in bank_blocks:
-            # Название банка
-            bank_name = block.select_one('div.bank__title').text.strip()
+                    # Количество отделений
+                    branches_info = await block.query_selector('div.bank__info')
+                    if branches_info:
+                        branches_text = await branches_info.inner_text()
+                        if "отделений" in branches_text:
+                            # Извлекаем число из текста (например, "2 отделения" -> 2)
+                            branches_count = int(branches_text.split()[0])
+                        else:
+                            # Если текст не содержит "отделений", считаем, что отделений нет
+                            branches_count = 0
+                    else:
+                        # Если блока с информацией нет, отделений нет
+                        branches_count = 0
 
-            # Количество отделений
-            branches_info = block.select_one('div.bank__info')
-            if branches_info:
-                branches_text = branches_info.text.strip()
-                if "отделений" in branches_text:
-                    # Извлекаем число из текста (например, "2 отделения" -> 2)
-                    branches_count = int(branches_text.split()[0])
-                else:
-                    # Если текст не содержит "отделений", считаем, что отделений нет
-                    branches_count = 0
-            else:
-                # Если блока с информацией нет, отделений нет
-                branches_count = 0
+                    # Добавляем данные в словарь
+                    bank_branches[bank_name] = branches_count
 
-            # Добавляем данные в словарь
-            bank_branches[bank_name] = branches_count
+                except Exception as e:
+                    logger.error(f"Ошибка при обработке банка: {e}")
+                    continue
 
-        return bank_branches
+            logger.info("Парсинг завершен, возвращаем данные")
+            return bank_branches
+
+        except Exception as e:
+            logger.error(f"Ошибка при загрузке страницы: {e}")
+            return {}
+
+        finally:
+            logger.info("Закрываем браузер")
+            await browser.close()
