@@ -86,12 +86,8 @@ async def process_start_handler(message: Message, state: FSMContext):
     else:
         await message.answer("Errors: no data found for the /start command")
 
-
-@router.callback_query(F.data == get_lexicon_data("start")["btn"])
-@router.callback_query(F.data == get_lexicon_data("select_rate")["command"])
 @router.message(Command(commands=["currency"]))
 async def my_currency(message: Message, state: FSMContext):
-    """Обработчик последней кнопки."""
     await state.clear()
     user_id = message.from_user.id
     currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
@@ -99,9 +95,11 @@ async def my_currency(message: Message, state: FSMContext):
 
     # Получаем данные из базы данных
     db_result = await get_selected_currency(db_pool, user_id)
+    logger.info(f"db_result: {db_result}")
 
     # Форматируем результат
     formatted_result = await format_currency_from_db(db_result)
+    logger.info(f"formatted_result: {formatted_result}")
 
     # Проверка, что formatted_result является строкой
     if not formatted_result:
@@ -133,7 +131,8 @@ async def my_currency(message: Message, state: FSMContext):
     # Отправляем сообщение с клавиатурой
     await message.answer(f"{select_rate_data['notification_true']}\n{formatted_result}", reply_markup=keyboard)
 
-
+@router.callback_query(F.data == get_lexicon_data("start")["btn"])
+@router.callback_query(F.data == get_lexicon_data("select_rate")["command"])
 @router.message(Command(commands=["select_rate"]))
 async def handle_currency_selection(event: Message | CallbackQuery, state: FSMContext):
     """
