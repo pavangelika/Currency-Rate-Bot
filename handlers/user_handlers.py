@@ -534,7 +534,7 @@ async def process_year(message: Message, state: FSMContext):
 
     group_for_graf = categorize_currencies(selected_data_list)
     url = graf_mobile(group_for_graf, start, end)
-    logger.info(url)
+    logger.info(f'Сформирован график {url}')
 
     # Отправляем анимационное сообщение пользователю
     loading_task = asyncio.create_task(send_loading_message(message))
@@ -570,6 +570,6 @@ async def process_year(message: Message, state: FSMContext):
     else:
         await loading_task  # Дожидаемся окончания анимации
         await message.answer("График пока недоступен. Попробуйте позже.")
-        logger.info(f"График {url} пока недоступен ля пользователя {user_id}")
+        logger.info(f"График {url} недоступен для пользователя {user_id}")
     # Очищаем состояние после успешного выполнения
     await state.clear()
