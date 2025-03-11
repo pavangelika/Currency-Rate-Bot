@@ -13,14 +13,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
-
+    networks:
+      - app-network
 
   bot:
     build: .
     container_name: bot-container
     volumes:
       - .:/app
-      - /tmp/ssh-agent:/ssh-agent
+      - ~/.ssh:/root/.ssh  # Пробрасываем SSH-ключи
     depends_on:
       - postgres
     env_file:
@@ -33,11 +34,13 @@ services:
       POSTGRES_PORT: 5432
       GIT_USER_EMAIL: ${GIT_USER_EMAIL}
       GIT_USER_NAME: ${GIT_USER_NAME}
-      SSH_AUTH_SOCK: /ssh-agen
     restart: always
-    entrypoint: /bin/bash -c "./wait-for-it.sh postgres:5432 -- python main.py"
-
+    networks:
+      - app-network
+    command: ["python", "main.py"]
 
 volumes:
   postgres_data:
 
+networks:
+  app-network:
