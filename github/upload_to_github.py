@@ -40,7 +40,11 @@ def upload_to_github():
         repo.config_writer().set_value("user", "name", os.getenv("GIT_USER_NAME")).release()
 
         for file in Path(STATIC_PATH).glob("*.html"):
-            if file.is_file() and now - file.stat().st_mtime > DAYS_TO_KEEP * 86400:
+            file_mtime = file.stat().st_mtime
+            file_age = now - file_mtime
+            # logger.info(f"Файл: {file}, время изменения: {file_mtime}, возраст: {file_age} секунд")
+            # if file.is_file() and file_age > DAYS_TO_KEEP * 86400:
+            if file.is_file() and file_age > DAYS_TO_KEEP * 14400: #удаляем файлы старше 4 часов
                 file.unlink()
                 logger.info(f"Удален старый файл: {file}")
 

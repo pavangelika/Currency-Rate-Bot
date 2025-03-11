@@ -95,11 +95,11 @@ async def my_currency(message: Message, state: FSMContext):
 
     # Получаем данные из базы данных
     db_result = await get_selected_currency(db_pool, user_id)
-    logger.info(f"db_result: {db_result}")
+    # logger.info(f"db_result: {db_result}")
 
     # Форматируем результат
     formatted_result = await format_currency_from_db(db_result)
-    logger.info(f"formatted_result: {formatted_result}")
+    # logger.info(f"formatted_result: {formatted_result}")
 
     # Проверка, что formatted_result является строкой
     if not formatted_result:
@@ -260,10 +260,10 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
 
         # Загрузка данных о валютах
         currency_data = load_currency_data(currency_file_path)
-        logger.info(f"state {state}")
+        # logger.info(f"state {state}")
 
         db_result = await get_selected_currency(db_pool, user_id)
-        logger.info(f"db_result {db_result}")
+        # logger.info(f"db_result {db_result}")
         updated_currencies = update_selected_currency(db_result, user_id, currency_data)  # Обновляем user_dict
 
         # Добавляем пользователя в базу данных
@@ -566,8 +566,10 @@ async def process_year(message: Message, state: FSMContext):
         ])
 
         await message.answer("График готов! Нажмите на кнопку ниже:", reply_markup=keyboard)
+        logger.info(f"График {url} показан пользователю {user_id}")
     else:
         await loading_task  # Дожидаемся окончания анимации
         await message.answer("График пока недоступен. Попробуйте позже.")
+        logger.info(f"График {url} пока недоступен ля пользователя {user_id}")
     # Очищаем состояние после успешного выполнения
     await state.clear()

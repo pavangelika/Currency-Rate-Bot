@@ -30,7 +30,7 @@ def update_selected_currency(db_result, user_id, currency_data):
             matched_currency = next((item for item in currency_data if item["charCode"] == code), None)
             if matched_currency:
                 updated_currencies.append(matched_currency)
-    logger.info(f'updated_currencies {updated_currencies}')
+    # logger.info(f'updated_currencies {updated_currencies}')
 
     return updated_currencies  # Возвращаем обновленный список валют
 
