@@ -9,7 +9,7 @@ current_dir = os.path.dirname(__file__)  # Получаем путь к теку
 REPO_PATH = os.path.dirname(current_dir)  # Идем в корневую директорию
 STATIC_PATH = os.path.join(REPO_PATH, 'static')  # Переход в папку static
 GITHUB_REPO_URL = "git@github.com:pavangelika/CurrencyRate.git"  # SSH ссылка на репозиторий
-COMMIT_MESSAGE = "Автообновление графиков"
+COMMIT_MESSAGE = "update charts"
 
 DAYS_TO_KEEP = 1  # Сколько дней храним файлы
 now = time.time()

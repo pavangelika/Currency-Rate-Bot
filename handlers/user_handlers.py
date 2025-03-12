@@ -515,6 +515,10 @@ async def process_year(message: Message, state: FSMContext):
         await message.answer(f"Ошибка. Конечный год не может быть больше {current_year}.")
         return
 
+    if start<2001:
+        await message.answer(f"Ошибка. Данные до 2001 года не предоставляются.")
+        return
+
     # Сохраняем данные в state
     await state.update_data(start=start, end=end)
 
