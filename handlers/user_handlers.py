@@ -329,14 +329,14 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
 
     # Проверяем, подписан ли пользователь на рассылку
     everyday = await get_everyday(db_pool, user_id)
-    logger.info(f"User {user_id} everyday {everyday}")
+    logger.info(f"Current status of daily subscription user {user_id} - {everyday}")
 
     if everyday:
-        logger.info(f'everyday True = {everyday}')
         job_id = f"daily_greeting_{user_id}"
         text = get_lexicon_data("everyday")['notification_false']
 
         # Если задача существует, отменяем её
+        logger.info(f'job_id: {scheduler.get_job(job_id)}')
         if scheduler.get_job(job_id):
             try:
                 schedule_unsubscribe(job_id, scheduler)
@@ -345,7 +345,7 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
                 logger.error(e)
 
         # Обновляем статус подписки на False
-        await update_user_everyday(db_pool, user_id, False)
+        log = await update_user_everyday(db_pool, user_id, False)
 
         # Подтверждаем обработку callback_query
         await event.answer()

@@ -91,7 +91,7 @@ async def update_user_everyday(pool, user_id, everyday):
 
             query = "UPDATE users SET everyday = $1 WHERE user_id = $2"
             await connection.execute(query, everyday_value, user_id)
-            logger.info(f"User {user_id} everyday status updated to {everyday_value}.")
+            logger.info(f"Status of daily subscription was updated by user {user_id} to {everyday_value}")
     except Exception as e:
         logger.error(f"Error updating user {user_id} everyday status: {e}")
         raise
