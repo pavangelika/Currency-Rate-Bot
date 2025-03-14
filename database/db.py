@@ -38,7 +38,9 @@ async def create_table(pool):
                     timezone TEXT NOT NULL,
                     currency_data JSONB DEFAULT '[]',                   
                     everyday BOOLEAN DEFAULT FALSE,
-                    location JSONB DEFAULT '[]'
+                    location JSONB DEFAULT '[]',
+                    jobs JSONB DEFAULT '[]',
+                    last_course_data TEXT DEFAULT ''
                 );
             """)
             logger.info("Table 'users' has been created or already exists.")
@@ -91,7 +93,7 @@ async def update_user_everyday(pool, user_id, everyday):
 
             query = "UPDATE users SET everyday = $1 WHERE user_id = $2"
             await connection.execute(query, everyday_value, user_id)
-            logger.info(f"Status of daily subscription was updated by user {user_id} to {everyday_value}")
+            # logger.info(f"Status of daily subscription was updated by user {user_id} to {everyday_value}")
     except Exception as e:
         logger.error(f"Error updating user {user_id} everyday status: {e}")
         raise
@@ -119,6 +121,81 @@ async def update_user_currency(pool: asyncpg.Pool, user_id: int, selected_curren
         logger.error(f"Error updating user {user_id} currency: {e}")
         raise
 
+async def update_user_jobs(pool: asyncpg.Pool, user_id: int, job_id: str) -> None:
+    """Добавляет job_id в массив jobs для указанного user_id."""
+    try:
+        async with pool.acquire() as connection:
+            # Получаем текущий массив jobs
+            current_jobs = await connection.fetchval(
+                "SELECT jobs FROM users WHERE user_id = $1", user_id
+            )
+
+            # Если jobs отсутствует или это строка, создаем новый массив
+            if current_jobs is None or isinstance(current_jobs, str):
+                current_jobs = []
+
+            # Если current_jobs — это строка, преобразуем её в список
+            if isinstance(current_jobs, str):
+                try:
+                    current_jobs = json.loads(current_jobs)
+                except json.JSONDecodeError:
+                    current_jobs = []
+
+            # Добавляем новый job_id в массив, если его там нет
+            if job_id not in current_jobs:
+                current_jobs.append(job_id)
+
+            # Обновляем столбец jobs
+            await connection.execute(
+                "UPDATE users SET jobs = $1::jsonb WHERE user_id = $2",
+                json.dumps(current_jobs, ensure_ascii=False),  # Преобразуем список в JSON-строку
+                user_id
+            )
+    except Exception as e:
+        logger.error(f"Error updating jobs for user {user_id}: {e}")
+        raise
+
+async def get_user_jobs(pool: asyncpg.Pool, user_id: int):
+    """Возвращает задачи из планировщика пользователя."""
+    try:
+        async with pool.acquire() as connection:
+            result = await connection.fetchval(
+                "SELECT jobs FROM users WHERE user_id = $1", user_id
+            )
+
+            if result:
+                return json.loads(result)  # Декодируем JSON-строку обратно в Python-объект
+            return []  # Если данных нет, возвращаем пустой список
+
+    except Exception as e:
+        logger.error(f"Error fetching selected_currency for {user_id} from the database: {e}")
+        return []
+
+async def update_last_course_data(pool: asyncpg.Pool, user_id: int, course_data: str) -> None:
+    """Обновляет последнее отправленное значение курса валют для указанного user_id."""
+    try:
+        async with pool.acquire() as connection:
+            await connection.execute(
+                "UPDATE users SET last_course_data = $1 WHERE user_id = $2",
+                course_data,
+                user_id
+            )
+            logger.info(f"Last course data updated for user {user_id}.")
+    except Exception as e:
+        logger.error(f"Error updating last_course_data for user {user_id}: {e}")
+        raise
+
+async def get_last_course_data(pool: asyncpg.Pool, user_id: int) -> str:
+    """Возвращает последнее отправленное значение курса валют для указанного user_id."""
+    try:
+        async with pool.acquire() as connection:
+            result = await connection.fetchval(
+                "SELECT last_course_data FROM users WHERE user_id = $1", user_id
+            )
+            return result if result else ""
+    except Exception as e:
+        logger.error(f"Error fetching last_course_data for user {user_id}: {e}")
+        return ""
 
 async def get_user_by_id(pool, user_id):
     """Возвращает данные пользователя по его ID."""

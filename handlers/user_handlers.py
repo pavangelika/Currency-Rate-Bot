@@ -14,10 +14,10 @@ from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
 
 from database.db import create_db_pool, create_table, get_everyday, get_selected_currency, \
-    format_currency_from_db, update_user_everyday, add_user_to_db, update_user_currency
+    format_currency_from_db, update_user_everyday, add_user_to_db, update_user_currency, update_user_jobs, get_user_jobs
 from github.check_url import check_file_available
 from github.downloading import send_loading_message
-from handlers.notifications import schedule_daily_greeting, schedule_unsubscribe
+from handlers.notifications import schedule_daily_greeting, schedule_unsubscribe, schedule_interval_greeting
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
@@ -27,15 +27,13 @@ from parsing.bank import get_city_link
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile
 from service.geocoding import get_city_by_coordinates
 from states.state import UserState
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Инициализируем роутер уровня модуля
 router = Router()
 
-# Глобальная переменная для планировщика
-scheduler = None
-
-
-def set_scheduler(sched):
+scheduler: AsyncIOScheduler = None  # Явно указываем тип
+def set_scheduler(sched:AsyncIOScheduler):
     global scheduler
     scheduler = sched
 
@@ -328,24 +326,27 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
     message = event.message  # Используем message из callback_query
 
     # Проверяем, подписан ли пользователь на рассылку
-    everyday = await get_everyday(db_pool, user_id)
-    logger.info(f"Current status of daily subscription user {user_id} - {everyday}")
+    subscription = await get_everyday(db_pool, user_id)
 
-    if everyday:
-        job_id = f"daily_greeting_{user_id}"
+    if subscription:
         text = get_lexicon_data("everyday")['notification_false']
+        # Получаем список задач пользователя
+        jobs = await get_user_jobs(db_pool, user_id)
 
-        # Если задача существует, отменяем её
-        logger.info(f'job_id: {scheduler.get_job(job_id)}')
-        if scheduler.get_job(job_id):
-            try:
-                schedule_unsubscribe(job_id, scheduler)
-                logger.info(f'Scheduler has been deleted {job_id}')
-            except Exception as e:
-                logger.error(e)
+        # Отменяем каждую задачу из списка
+        for job_id in jobs:
+            if scheduler.get_job(job_id):
+                try:
+                    scheduler.remove_job(job_id)  # Удаляем задачу из планировщика
+                    logger.info(f"Jobs from DB == {jobs}")
+                except Exception as e:
+                    logger.error(e)
+            else:
+                logger.info(f'Scheduler has not found task "{job_id}"')
 
         # Обновляем статус подписки на False
-        log = await update_user_everyday(db_pool, user_id, False)
+        await update_user_everyday(db_pool, user_id, False)
+        await update_user_jobs(db_pool, user_id, job_id=None)  # Очищаем список задач
 
         # Подтверждаем обработку callback_query
         await event.answer()
@@ -356,20 +357,23 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
     else:
         # Если пользователь не подписан, подписываем его
         try:
-            logger.info(f'everyday False = {everyday}')
-            everyday = await update_user_everyday(db_pool, user_id, True)
-            logger.info(f"User {user_id} everyday {everyday}")
+            await update_user_everyday(db_pool, user_id, True)
+            subscription = await get_everyday(db_pool, user_id)
 
             # Получаем выбранные валюты и текущую дату
             selected_data = await get_selected_currency(db_pool, user_id)
             today = datetime.date.today().strftime("%d/%m/%Y")
+            tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d/%m/%Y")
 
             # Подтверждаем обработку callback_query
             await event.answer()
 
-            # Запланируем ежедневную рассылку
-            schedule_daily_greeting(user_id, scheduler, selected_data, today)
-            logger.info(f"User {user_id} has subscribed to the daily newsletter")
+            # Запланируем рассылку
+            job_id = schedule_interval_greeting(user_id, scheduler, selected_data, today, db_pool)
+            await update_user_jobs(db_pool, user_id, job_id)  # Добавляем job_id в список задач
+            jobs = await get_user_jobs(db_pool, user_id)
+            logger.info(f"Jobs from DB == {jobs}")
+            logger.info(f"User {user_id} jobs == {scheduler.get_job(job_id)}")
 
             # Отправляем сообщение о включении рассылки
             await message.answer(text=get_lexicon_data("everyday")['notification_true'])

@@ -24,13 +24,11 @@ def check_ssh_connection():
         print(f"Ошибка при проверке SSH: {e}")
 
 
-check_ssh_connection()
-
-
 def upload_to_github():
     """
     Загружает файлы в репозиторий GitHub.
     """
+    check_ssh_connection()
     try:
         # Открываем локальный репозиторий
         repo = git.Repo(REPO_PATH)
