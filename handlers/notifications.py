@@ -61,7 +61,7 @@ def schedule_interval_greeting(user_id, scheduler, selected_data, day, db_pool):
         return
     else:
         try:
-            scheduler.add_job(send_greeting, IntervalTrigger(hours=6), args=[user_id, selected_data, day, db_pool], id=job_id)
+            scheduler.add_job(send_greeting, IntervalTrigger(hours=1), args=[user_id, selected_data, day, db_pool], id=job_id)
             logger.info(f"Success. Task ID {job_id} has been added to scheduler.")
         except Exception as e:
             logger.error(e)
