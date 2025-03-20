@@ -373,7 +373,7 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
             course_data = course_today(selected_data, today)
             await update_last_course_data(db_pool, user_id, course_data)
             last_course_data = await get_last_course_data(db_pool, user_id)
-            logger.info(f'last course for user {user_id}: {last_course_data}')
+            # logger.info(f'last course for user {user_id}: {last_course_data}')
 
             # Запланируем рассылку
             job_id = schedule_interval_greeting(user_id, scheduler, selected_data, today)
