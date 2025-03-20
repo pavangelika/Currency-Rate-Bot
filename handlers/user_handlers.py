@@ -533,6 +533,9 @@ async def process_year(message: Message, state: FSMContext):
     # Сохраняем данные в state
     await state.update_data(start=start, end=end)
 
+    # Отправляем анимационное сообщение пользователю
+    loading_task = asyncio.create_task(send_loading_message(message))
+
     # Генерация данных для графика
     selected_data = await get_selected_currency(db_pool, user_id)
 
@@ -552,7 +555,7 @@ async def process_year(message: Message, state: FSMContext):
     logger.info(f'Сформирован график {url}')
 
     # Отправляем анимационное сообщение пользователю
-    loading_task = asyncio.create_task(send_loading_message(message))
+    # loading_task = asyncio.create_task(send_loading_message(message))
 
     # Проверяем доступность файла
     if await check_file_available(url):
