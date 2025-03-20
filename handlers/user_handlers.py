@@ -15,7 +15,8 @@ from aiogram.types.web_app_info import WebAppInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from database.db import create_db_pool, create_table, get_everyday, get_selected_currency, \
-    format_currency_from_db, update_user_everyday, add_user_to_db, update_user_currency, update_user_jobs, get_user_jobs
+    format_currency_from_db, update_user_everyday, add_user_to_db, update_user_currency, update_user_jobs, \
+    get_user_jobs, get_last_course_data, update_last_course_data
 from github.check_url import check_file_available
 from github.downloading import send_loading_message
 from handlers.notifications import schedule_interval_greeting
@@ -367,6 +368,12 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
 
             # Подтверждаем обработку callback_query
             await event.answer()
+
+            # Проверка last_course_data в БД пользователя
+            course_data = course_today(selected_data, today)
+            await update_last_course_data(db_pool, user_id, course_data)
+            last_course_data = await get_last_course_data(db_pool, user_id)
+            logger.info(f'last course for user {user_id}: {last_course_data}')
 
             # Запланируем рассылку
             job_id = schedule_interval_greeting(user_id, scheduler, selected_data, today)

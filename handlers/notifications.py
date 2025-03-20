@@ -57,8 +57,8 @@ async def send_greeting(user_id, selected_data, day):
                 await bot.send_message(user_id, course_data)
                 await update_last_course_data(db_pool, user_id, course_data)
                 logger.info(f"New course data sent to user {user_id}.")
-            else:
-                logger.info(f"Course data for user {user_id} has not changed. Skipping send.")
+            # else:
+                # logger.info(f"Course data for user {user_id} has not changed. Skipping send.")
     except Exception as e:
         logger.error(f"Error. The daily newsletter has been not sent: {e}")
     finally:
