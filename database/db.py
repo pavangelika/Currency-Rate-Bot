@@ -271,3 +271,21 @@ async def format_currency_from_db(db_result):
     except Exception as e:
         logger.error(f"Error formatting currency from DB: {e}")
         return None
+
+
+async def get_all_jobs(pool: asyncpg.Pool):
+    """Возвращает задачи для всех пользователей."""
+    try:
+        async with pool.acquire() as connection:
+            result = await connection.fetch("SELECT user_id, jobs FROM users")
+            jobs = []
+            for row in result:
+                if row['jobs']:
+                    user_jobs = json.loads(row['jobs'])
+                    for job in user_jobs:
+                        job['user_id'] = row['user_id']  # Добавляем user_id в каждую задачу
+                    jobs.extend(user_jobs)
+            return jobs
+    except Exception as e:
+        logger.error(f"Error fetching jobs from the database: {e}")
+        return []

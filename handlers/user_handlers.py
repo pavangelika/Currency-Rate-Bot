@@ -12,12 +12,13 @@ from aiogram.fsm.state import default_state
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types import Message
 from aiogram.types.web_app_info import WebAppInfo
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from database.db import create_db_pool, create_table, get_everyday, get_selected_currency, \
     format_currency_from_db, update_user_everyday, add_user_to_db, update_user_currency, update_user_jobs, get_user_jobs
 from github.check_url import check_file_available
 from github.downloading import send_loading_message
-from handlers.notifications import schedule_daily_greeting, schedule_unsubscribe, schedule_interval_greeting
+from handlers.notifications import schedule_interval_greeting
 from handlers.selected_currency import update_selected_currency, load_currency_data
 from keyboards.buttons import create_inline_kb, keyboard_with_pagination_and_selection
 from lexicon.lexicon import CURRENCY, \
@@ -27,7 +28,6 @@ from parsing.bank import get_city_link
 from service.CbRF import course_today, dinamic_course, parse_xml_data, categorize_currencies, graf_mobile
 from service.geocoding import get_city_by_coordinates
 from states.state import UserState
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Инициализируем роутер уровня модуля
 router = Router()
@@ -369,7 +369,7 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
             await event.answer()
 
             # Запланируем рассылку
-            job_id = schedule_interval_greeting(user_id, scheduler, selected_data, today, db_pool)
+            job_id = schedule_interval_greeting(user_id, scheduler, selected_data, today)
             await update_user_jobs(db_pool, user_id, job_id)  # Добавляем job_id в список задач
             jobs = await get_user_jobs(db_pool, user_id)
             logger.info(f"Jobs from DB == {jobs}")
