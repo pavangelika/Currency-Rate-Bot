@@ -17,7 +17,7 @@ from asyncio import run as aiorun
 
 def sync_send_greeting(user_id, selected_data, day):
     """Обертка для асинхронной функции send_greeting."""
-    aiorun(send_greeting(user_id, selected_data, day))
+    aiorun(send_greeting(user_id, selected_data))
 
 async def load_jobs_from_db(scheduler, db_pool):
     """Загружает задачи из базы данных в планировщик."""
