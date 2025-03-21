@@ -364,7 +364,7 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
             # Получаем выбранные валюты и текущую дату
             selected_data = await get_selected_currency(db_pool, user_id)
             today = datetime.date.today().strftime("%d/%m/%Y")
-            tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d/%m/%Y")
+            # tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d/%m/%Y")
 
             # Подтверждаем обработку callback_query
             await event.answer()
@@ -376,7 +376,7 @@ async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
             logger.info(f'last course for user {user_id}: {last_course_data}')
 
             # Запланируем рассылку
-            job_id = schedule_interval_greeting(user_id, scheduler, selected_data, today)
+            job_id = schedule_interval_greeting(user_id, scheduler, selected_data)
             await update_user_jobs(db_pool, user_id, job_id)  # Добавляем job_id в список задач
             jobs = await get_user_jobs(db_pool, user_id)
             logger.info(f"Jobs from DB == {jobs}")

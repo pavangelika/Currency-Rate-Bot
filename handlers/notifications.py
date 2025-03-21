@@ -1,4 +1,5 @@
 # notifications.py
+import datetime
 import os
 
 from aiogram import Bot
@@ -42,10 +43,11 @@ async def load_jobs_from_db(scheduler, db_pool):
 async def send_message_with_retry(user_id, text):
     await bot.send_message(chat_id=user_id, text=text)
 
-async def send_greeting(user_id, selected_data, day):
+async def send_greeting(user_id, selected_data):
     """Отправляет курс валют пользователю."""
     db_pool = await create_db_pool()  # Создаем соединение с базой данных внутри задачи
     try:
+        day = datetime.date.today().strftime("%d/%m/%Y")  # Обновляем дату
         course_data = course_today(selected_data, day)
         single_line = " ".join(course_data.splitlines())
         logger.info(f"Course data for {day}: {single_line}")
@@ -84,7 +86,7 @@ def schedule_daily_greeting(user_id, scheduler, selected_data, day):
     return job_id
 
 
-def schedule_interval_greeting(user_id, scheduler, selected_data, day):  # Добавили scheduler в параметры
+def schedule_interval_greeting(user_id, scheduler, selected_data):  # Добавили scheduler в параметры
     """Запланировать отправку 'Привет!' каждые 30 секунд."""
     job_id = f"job_interval_{user_id}"
     if scheduler.get_job(job_id):
@@ -92,7 +94,7 @@ def schedule_interval_greeting(user_id, scheduler, selected_data, day):  # До�
         return
     else:
         try:
-            scheduler.add_job(sync_send_greeting, IntervalTrigger(minutes=1), args=[user_id, selected_data, day], id=job_id)
+            scheduler.add_job(sync_send_greeting, IntervalTrigger(minutes=1), args=[user_id, selected_data, datetime.date.today().strftime("%d/%m/%Y")], id=job_id)
             logger.info(f"Success. Task ID {job_id} has been added to scheduler.")
         except Exception as e:
             logger.error(e)
