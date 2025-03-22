@@ -1,7 +1,7 @@
 # notifications.py
 import datetime
 import os
-
+import re  # Добавьте эту строку
 from aiogram import Bot
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -54,18 +54,34 @@ async def send_greeting(user_id, selected_data):
 
         if course_data != f"Данные на {day} не опубликованы":
             last_course_data = await get_last_course_data(db_pool, user_id)
+            # logger.info(f"Last course data from DB: {last_course_data}")
 
-            if course_data != last_course_data:
-                await bot.send_message(user_id, course_data)
-                await update_last_course_data(db_pool, user_id, course_data)
-                logger.info(f"New course data sent to user {user_id}.")
-            # else:
-            #     logger.info(f"Course data for user {user_id} has not changed. Skipping send.")
+            # Извлекаем курс доллара из course_data
+            dollar_course_match = re.search(r"Доллар США = (\d+\.\d+)", course_data)
+            if dollar_course_match:
+                current_dollar_course = float(dollar_course_match.group(1))
+                # logger.info(f"Extracted dollar course: {current_dollar_course}")
+
+                # Извлекаем курс доллара из last_course_data
+                last_dollar_course_match = re.search(r"Доллар США = (\d+\.\d+)", last_course_data)
+                if last_dollar_course_match:
+                    last_dollar_course = float(last_dollar_course_match.group(1))
+
+                    # Сравниваем текущий курс с последним сохраненным
+                    if current_dollar_course != last_dollar_course:
+                        await bot.send_message(user_id, course_data)
+                        await update_last_course_data(db_pool, user_id, course_data)
+                        logger.info(f"New course data sent to user {user_id}.")
+                    else:
+                        logger.info(f"Course data has not changed. Skipping send.")
+                else:
+                    logger.error("Failed to extract dollar course from last_course_data.")
+            else:
+                logger.error("Failed to extract dollar course from course_data.")
     except Exception as e:
         logger.error(f"Error. The daily newsletter has been not sent: {e}")
     finally:
         await db_pool.close()  # Закрываем соединение с базой данных
-
 
 def schedule_daily_greeting(user_id, scheduler, selected_data, day):
     """Запланировать ежедневную рассылку в 7:00 по московскому времени."""
