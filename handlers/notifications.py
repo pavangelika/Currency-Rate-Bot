@@ -50,7 +50,7 @@ async def send_greeting(user_id, selected_data):
         day = datetime.date.today().strftime("%d/%m/%Y")  # Обновляем дату
         course_data = course_today(selected_data, day)
         single_line = " ".join(course_data.splitlines())
-        logger.info(f"Course data for {day}: {single_line}")
+        # logger.info(f"Course data for {day}: {single_line}")
 
         if course_data != f"Данные на {day} не опубликованы":
             last_course_data = await get_last_course_data(db_pool, user_id)
@@ -72,8 +72,8 @@ async def send_greeting(user_id, selected_data):
                         await bot.send_message(user_id, course_data)
                         await update_last_course_data(db_pool, user_id, course_data)
                         logger.info(f"New course data sent to user {user_id}.")
-                    else:
-                        logger.info(f"Course data has not changed. Skipping send.")
+                    # else:
+                    #     logger.info(f"Course data has not changed. Skipping send.")
                 else:
                     logger.error("Failed to extract dollar course from last_course_data.")
             else:
