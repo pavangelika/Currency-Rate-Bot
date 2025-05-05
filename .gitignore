@@ -1,9 +1,7 @@
-# BOT_TOKEN
-/config_data
-
 # Виртуальные окружения
 venv/
 env/
+# BOT_TOKEN
 .env
 
 # Лог
