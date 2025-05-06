@@ -44,3 +44,17 @@ volumes:
 
 networks:
   app-network:
+
+#docker-compose up --build
+# 1. Остановка и очистка
+#docker-compose down -v --rmi all
+
+# 2. Пересборка
+#docker-compose build --no-cache
+
+# 3. Запуск
+#docker-compose up -d
+
+# 4. Проверка
+#docker-compose ps
+
