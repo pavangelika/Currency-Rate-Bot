@@ -1,12 +1,17 @@
+import datetime
 import json
 import os
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 
 from github.upload_to_github import upload_to_github
 from logger.logging_settings import logger
+
+SAVE_PATH = "static"  # Локальная папка для хранения файлов
 
 
 def currency():
@@ -119,12 +124,6 @@ def parse_xml_data(xml_data):
         data.setdefault(year, {})[date_str] = value  # 7
     return data  # 8
 
-
-import datetime
-import requests
-import xml.etree.ElementTree as ET
-
-
 def categorize_currencies(currencies):
     """
     Разбивает валюты на группы на основе их значений.
@@ -169,7 +168,7 @@ def categorize_currencies(currencies):
     return categorized_currencies
 
 
-SAVE_PATH = "static"  # Локальная папка для хранения файлов
+
 
 
 def graf_mobile(currencies, start_year, end_year):
