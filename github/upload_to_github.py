@@ -18,17 +18,20 @@ now = time.time()
 def check_ssh_connection():
     try:
         result = subprocess.run(["ssh", "-T", "git@github.com"], capture_output=True, text=True)
-        print(result.stdout)
-        print(result.stderr)
+        logger.info(f"result.stdout {result.stdout}")
+        logger.info(f"result.stderr {result.stderr}")
     except Exception as e:
-        print(f"Ошибка при проверке SSH: {e}")
+        logger.error(f"Ошибка при проверке SSH: {e}")
+
+
+check_ssh_connection()
 
 
 def upload_to_github():
     """
     Загружает файлы в репозиторий GitHub.
     """
-    check_ssh_connection()
+
     try:
         # Открываем локальный репозиторий
         repo = git.Repo(REPO_PATH)
