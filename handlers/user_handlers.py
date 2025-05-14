@@ -256,7 +256,8 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
 
         selected_data = await get_selected_currency(db_pool, user_id)
         today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
-        await update_last_course_data(db_pool, user_id, course_today(selected_data, today))
+        today_rate = course_today(selected_data, today)
+        await update_last_course_data(db_pool, user_id, today_rate)
 
         # Путь к файлу (можно использовать абсолютный путь)
         currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
