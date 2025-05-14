@@ -8,7 +8,8 @@ import subprocess
 current_dir = os.path.dirname(__file__)  # Получаем путь к текущему файлу (скрипту)
 REPO_PATH = os.path.dirname(current_dir)  # Идем в корневую директорию
 STATIC_PATH = os.path.join(REPO_PATH, 'static')  # Переход в папку static
-GITHUB_REPO_URL = "https://github.com/pavangelika/CurrencyRate.git"  # HTTPS ссылка
+token = os.getenv("GITHUB_TOKEN")
+repo_url = f"https://{token}@github.com/pavangelika/CurrencyRate.git"
 COMMIT_MESSAGE = "update charts"
 
 DAYS_TO_KEEP = 1  # Сколько дней храним файлы
@@ -21,10 +22,6 @@ def upload_to_github():
     try:
         # Открываем локальный репозиторий
         repo = git.Repo(REPO_PATH)
-
-        # Убедитесь, что URL origin — HTTPS
-        if "git@" in repo.remotes.origin.url:
-            repo.remotes.origin.set_url("https://github.com/pavangelika/CurrencyRate.git")
 
         # Настройка учетных данных
         username = os.getenv("GIT_USERNAME")  # Логин GitHub
