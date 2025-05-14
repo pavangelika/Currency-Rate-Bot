@@ -16,34 +16,34 @@ services:
     networks:
       - app-network
 
-#  bot:
-#    build: .
-#    container_name: bot-container
-#    volumes:
-#      - .:/app
+  bot:
+    build: .
+    container_name: bot-container
+    volumes:
+      - .:/app
 #      - ~/.ssh:/root/.ssh  # Пробрасываем SSH-ключи
-#    depends_on:
-#      - postgres
-#    env_file:
-#      - .env
-#    environment:
-#      POSTGRES_HOST: ${DB_HOST}
-#      POSTGRES_DB: ${DB_NAME}
-#      POSTGRES_USER: ${DB_USER}
-#      POSTGRES_PASSWORD: ${DB_PASSWORD}
-#      POSTGRES_PORT: 5432
-#      GIT_USER_EMAIL: ${GIT_USER_EMAIL}
-#      GIT_USER_NAME: ${GIT_USER_NAME}
-#    restart: always
-#    networks:
-#      - app-network
-#    command: ["python", "main.py"]
-#
-#volumes:
-#  postgres_data:
-#
-#networks:
-#  app-network:
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: ${DB_HOST}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PORT: 5432
+      GIT_USER_EMAIL: ${GIT_USER_EMAIL}
+      GIT_USER_NAME: ${GIT_USER_NAME}
+    restart: always
+    networks:
+      - app-network
+    command: ["python", "main.py"]
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
 
 #docker-compose up --build
 # 1. Остановка и очистка
