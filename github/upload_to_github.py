@@ -24,7 +24,7 @@ def check_ssh_connection():
         logger.error(f"Ошибка при проверке SSH: {e}")
 
 
-check_ssh_connection()
+# check_ssh_connection()
 
 
 def upload_to_github():
@@ -35,6 +35,13 @@ def upload_to_github():
     try:
         # Открываем локальный репозиторий
         repo = git.Repo(REPO_PATH)
+
+        # Принудительно установите SSH-URL
+        if "https://" in repo.remotes.origin.url:
+            repo.remotes.origin.set_url("git@github.com:pavangelika/CurrencyRate.git")
+
+        # Проверьте SSH
+        check_ssh_connection()
 
         # Настройка Git (используем переменные окружения)
         repo.config_writer().set_value("user", "email", os.getenv("GIT_USER_EMAIL")).release()

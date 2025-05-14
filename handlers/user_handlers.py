@@ -254,6 +254,10 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}",
                                       reply_markup=keyboard)
 
+        selected_data = await get_selected_currency(db_pool, user_id)
+        today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
+        await update_last_course_data(db_pool, user_id, course_today(selected_data, today))
+
         # Путь к файлу (можно использовать абсолютный путь)
         currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
 
@@ -291,6 +295,7 @@ async def send_today_handler(event: Message | CallbackQuery, state: FSMContext):
             await event.message.answer(course_today(selected_data, today))
         else:  # isinstance(event, Message)
             await event.answer(course_today(selected_data, today))
+        await update_last_course_data(db_pool, user_id, course_today(selected_data, today))
         logger.info(f"User {user_id} has selected the '/today' command'")
     except Exception as e:
         logger.error(e)
