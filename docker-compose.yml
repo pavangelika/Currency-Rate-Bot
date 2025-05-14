@@ -21,7 +21,6 @@ services:
     container_name: bot-container
     volumes:
       - .:/app
-#      - ~/.ssh:/root/.ssh  # Пробрасываем SSH-ключи
     depends_on:
       - postgres
     env_file:
@@ -60,3 +59,6 @@ networks:
 
 #docker logs bot-container
 
+#docker-compose down
+#docker-compose build --no-cache
+#docker-compose up

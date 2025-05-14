@@ -254,10 +254,8 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(f"{select_rate_data['notification_true']}\n{chr(10).join(selected_names)}",
                                       reply_markup=keyboard)
 
-        selected_data = await get_selected_currency(db_pool, user_id)
-        today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
-        today_rate = course_today(selected_data, today)
-        await update_last_course_data(db_pool, user_id, today_rate)
+
+
 
         # Путь к файлу (можно использовать абсолютный путь)
         currency_file_path = os.path.join(os.path.dirname(__file__), '../save_files/currency_code.json')
@@ -275,6 +273,9 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
             await update_user_currency(db_pool, user_id, selected_currency=updated_currencies)
             db_result = await get_selected_currency(db_pool, user_id)
             formatted_result = await format_currency_from_db(db_result)
+            selected_data = await get_selected_currency(db_pool, user_id)
+            today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
+            await update_last_course_data(db_pool, user_id, course_today(selected_data, today))
         except Exception as e:
             logger.error(e)
 
