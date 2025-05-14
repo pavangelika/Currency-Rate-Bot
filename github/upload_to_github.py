@@ -22,9 +22,9 @@ def upload_to_github():
         # Открываем локальный репозиторий
         repo = git.Repo(REPO_PATH)
 
-        # # Убедитесь, что URL origin — HTTPS
-        # if "git@" in repo.remotes.origin.url:
-        #     repo.remotes.origin.set_url("https://github.com/pavangelika/CurrencyRate.git")
+        # Убедитесь, что URL origin — HTTPS
+        if "git@" in repo.remotes.origin.url:
+            repo.remotes.origin.set_url("https://github.com/pavangelika/CurrencyRate.git")
 
         # Настройка учетных данных
         username = os.getenv("GIT_USERNAME")  # Логин GitHub
