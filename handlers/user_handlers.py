@@ -277,6 +277,52 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
             selected_data = await get_selected_currency(db_pool, user_id)
             today = datetime.date.today().strftime("%d/%m/%Y")  # Формат: ДД/ММ/ГГГГ
             await update_last_course_data(db_pool, user_id, course_today(selected_data, today))
+
+            # Проверяем, подписан ли пользователь на рассылку
+            subscription = await get_everyday(db_pool, user_id)
+
+            try:
+                if subscription:
+                    text = get_lexicon_data("everyday")['notification_false']
+                    # Получаем список задач пользователя
+                    jobs = await get_user_jobs(db_pool, user_id)
+
+                    # Отменяем каждую задачу из списка
+                    for job_id in jobs:
+                        if scheduler.get_job(job_id):
+                            try:
+                                scheduler.remove_job(job_id)  # Удаляем задачу из планировщика
+                                logger.info(f"Jobs from DB == {jobs}")
+                            except Exception as e:
+                                logger.error(e)
+                        else:
+                            logger.info(f'Scheduler has not found task "{job_id}"')
+
+                    # Обновляем статус подписки на False
+                    await update_user_jobs(db_pool, user_id, job_id=None)  # Очищаем список задач
+
+                    # Получаем выбранные валюты и текущую дату
+                    selected_data = await get_selected_currency(db_pool, user_id)
+                    today = datetime.date.today().strftime("%d/%m/%Y")
+
+                    # Проверка last_course_data в БД пользователя
+                    course_data = course_today(selected_data, today)
+                    await update_last_course_data(db_pool, user_id, course_data)
+                    last_course_data = await get_last_course_data(db_pool, user_id)
+                    single_line = " ".join(last_course_data.splitlines())
+                    logger.info(f'last course for user {user_id}: {single_line}')
+
+                    # Запланируем рассылку
+                    job_id = schedule_interval_greeting(user_id, scheduler, selected_data)
+                    await update_user_jobs(db_pool, user_id, job_id)  # Добавляем job_id в список задач
+                    jobs = await get_user_jobs(db_pool, user_id)
+                    logger.info(f"Scheduler was updated == {selected_data}")
+                    logger.info(f"Jobs from DB == {jobs}")
+                    logger.info(f"User {user_id} jobs == {scheduler.get_job(job_id)}")
+
+            except Exception as e:
+                logger.error(f"Error in send_today_schedule_handler: {e}")
+
         except Exception as e:
             logger.error(e)
 
@@ -326,65 +372,6 @@ async def everyday_handlers(message: Message, state: FSMContext):
 
                 # Отправляем сообщение с клавиатурой
                 await message.answer(text=btn_answer, reply_markup=keyboard)
-
-
-@router.message(Command(commands=["select_rate"]))
-async def edit_today_schedule_handler(event: CallbackQuery, state: FSMContext):
-    # Получаем user_id и сообщение из callback_query
-    user_id = event.from_user.id
-    message = event.message  # Используем message из callback_query
-
-    # Проверяем, подписан ли пользователь на рассылку
-    subscription = await get_everyday(db_pool, user_id)
-
-    try:
-        if subscription:
-            text = get_lexicon_data("everyday")['notification_false']
-            # Получаем список задач пользователя
-            jobs = await get_user_jobs(db_pool, user_id)
-
-            # Отменяем каждую задачу из списка
-            for job_id in jobs:
-                if scheduler.get_job(job_id):
-                    try:
-                        scheduler.remove_job(job_id)  # Удаляем задачу из планировщика
-                        logger.info(f"Jobs from DB == {jobs}")
-                    except Exception as e:
-                        logger.error(e)
-                else:
-                    logger.info(f'Scheduler has not found task "{job_id}"')
-
-            # Обновляем статус подписки на False
-            # await update_user_everyday(db_pool, user_id, False)
-            await update_user_jobs(db_pool, user_id, job_id=None)  # Очищаем список задач
-
-            # await update_user_everyday(db_pool, user_id, True)
-            # subscription = await get_everyday(db_pool, user_id)
-
-            # Получаем выбранные валюты и текущую дату
-            selected_data = await get_selected_currency(db_pool, user_id)
-            today = datetime.date.today().strftime("%d/%m/%Y")
-
-            # Подтверждаем обработку callback_query
-            await event.answer()
-
-            # Проверка last_course_data в БД пользователя
-            course_data = course_today(selected_data, today)
-            await update_last_course_data(db_pool, user_id, course_data)
-            last_course_data = await get_last_course_data(db_pool, user_id)
-            logger.info(f'last course for user {user_id}: {last_course_data}')
-
-            # Запланируем рассылку
-            job_id = schedule_interval_greeting(user_id, scheduler, selected_data)
-            await update_user_jobs(db_pool, user_id, job_id)  # Добавляем job_id в список задач
-            jobs = await get_user_jobs(db_pool, user_id)
-            logger.info(f"Scheduler was updated == {selected_data}")
-            logger.info(f"Jobs from DB == {jobs}")
-            logger.info(f"User {user_id} jobs == {scheduler.get_job(job_id)}")
-
-    except Exception as e:
-        logger.error(f"Error in send_today_schedule_handler: {e}")
-
 
 @router.callback_query(lambda c: c.data == get_lexicon_data("everyday")["command"])
 async def send_today_schedule_handler(event: CallbackQuery, state: FSMContext):
