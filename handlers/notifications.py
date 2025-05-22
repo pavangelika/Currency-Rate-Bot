@@ -43,55 +43,85 @@ async def load_jobs_from_db(scheduler, db_pool):
 async def send_message_with_retry(user_id, text):
     await bot.send_message(chat_id=user_id, text=text)
 
+
 async def send_greeting(user_id, selected_data):
-    """Отправляет курс валют пользователю."""
-    db_pool = await create_db_pool()  # Создаем соединение с базой данных внутри задачи
+    """Отправляет курсы валют пользователю с учетом всех выбранных валют."""
+    db_pool = await create_db_pool()
     try:
-        day = datetime.date.today().strftime("%d/%m/%Y")  # Обновляем дату
+        logger.info(f"Обработка пользователя {user_id}, выбрано валют: {len(selected_data)}")
+
+        day = datetime.date.today().strftime("%d/%m/%Y")
+        logger.debug(f"Актуальная дата: {day}")
+
+        # Получаем текущие курсы
         course_data = course_today(selected_data, day)
-        single_line = " ".join(course_data.splitlines())
+        logger.debug(f"RAW данные курсов:\n{course_data}")
 
-        # Создаем паттерн для выбранной валюты с учетом возможных пробелов и форматирования
-        currency_pattern = re.compile(
-            re.escape(selected_data) + r"\s*=\s*(\d+[,.]\d+)",
-            re.IGNORECASE
-        )
-
-        # Извлекаем текущий курс
-        current_match = currency_pattern.search(course_data)
-        if current_match:
-            current_course_str = current_match.group(1).replace(',', '.')
-            current_course = float(current_course_str)
-        else:
-            logger.error(f"Курс для '{selected_data}' не найден в текущих данных")
+        if course_data == f"Данные на {day} не опубликованы":
+            logger.warning("Данные не опубликованы, отправка отменена")
             return
 
-            # Извлекаем последний сохраненный курс
-            last_match = currency_pattern.search(last_course_data) if last_course_data else None
-            if last_match:
-                # last_course_str = last_match.group(1).replace(',', '.')
-                last_course = float(last_course_str)
-                logger.info(f"last_course = {last_course}")
-            else:
-                # Если нет предыдущих данных, считаем курс новым
-                last_course = None
+        # Получаем последние данные из БД
+        last_course_data = await get_last_course_data(db_pool, user_id)
+        logger.debug(f"Данные из БД:\n{last_course_data or 'Нет данных'}")
 
-                # Сравниваем курсы
-                if last_course is None or current_course != last_course:
-                    await bot.send_message(user_id, course_data)
-                    await update_last_course_data(db_pool, user_id, course_data)
-                    logger.info(f"Новый курс {selected_data} отправлен пользователю {user_id}")
-                else:
-                    logger.info(f"Курс {selected_data} не изменился, отправка не требуется")
+        has_changes = False
+        currency_changes = []
 
-        if course_data != f"Данные на {day} не опубликованы":
-                last_course_data = await get_last_course_data(db_pool, user_id)
-                logger.info(f"Last course data from DB: {last_course_data}")
+        # Обрабатываем каждую валюту
+        for currency in selected_data:
+            currency_name = currency['name']
+            logger.info(f"Анализ валюты: {currency_name}")
+
+            # Генерируем паттерн поиска
+            pattern = re.compile(
+                fr"{re.escape(currency_name)}\s*=\s*(\d+[,.]\d+)",
+                re.IGNORECASE
+            )
+
+            # Парсим текущий курс
+            current_match = pattern.search(course_data)
+            if not current_match:
+                logger.error(f"Курс {currency_name} не найден!")
+                continue
+
+            current = float(current_match.group(1).replace(',', '.'))
+
+            # Парсим предыдущий курс
+            last = None
+            if last_course_data:
+                last_match = pattern.search(last_course_data)
+                if last_match:
+                    last = float(last_match.group(1).replace(',', '.'))
+
+            # Анализ изменений
+            logger.debug(f"{currency_name}: текущий {current} | предыдущий {last}")
+
+            if last is None or current != last:
+                logger.info(f"Обнаружено изменение курса {currency_name}")
+                has_changes = True
+                currency_changes.append(f"{currency_name}: {last or 'нет данных'} → {current}")
+
+        # Логика отправки сообщения
+        if has_changes:
+            logger.info(f"Изменения обнаружены в {len(currency_changes)} валютах")
+            await bot.send_message(user_id, course_data)
+            await update_last_course_data(db_pool, user_id, course_data)
+            logger.info("Данные обновлены и отправлены пользователю")
+
+            # Детальный лог изменений
+            changes_log = "\n".join(currency_changes)
+            logger.debug(f"Детали изменений:\n{changes_log}")
+        else:
+            logger.info("Изменений не обнаружено")
 
     except Exception as e:
-        logger.error(f"Ошибка при отправке рассылки: {e}")
+        logger.error(f"КРИТИЧЕСКАЯ ОШИБКА: {str(e)}", exc_info=True)
+        logger.error(f"Контекст: user={user_id}, data={selected_data}")
+
     finally:
         await db_pool.close()
+        logger.info("Соединение с БД закрыто")
 
 def schedule_daily_greeting(user_id, scheduler, selected_data, day):
     """Запланировать ежедневную рассылку в 7:00 по московскому времени."""
