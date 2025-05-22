@@ -309,7 +309,8 @@ async def handle_last_btn(callback: CallbackQuery, state: FSMContext):
                     course_data = course_today(selected_data, today)
                     await update_last_course_data(db_pool, user_id, course_data)
                     last_course_data = await get_last_course_data(db_pool, user_id)
-                    logger.info(f'last course for user {user_id}: {last_course_data}')
+                    single_line = " ".join(last_course_data.splitlines())
+                    logger.info(f'last course for user {user_id}: {single_line}')
 
                     # Запланируем рассылку
                     job_id = schedule_interval_greeting(user_id, scheduler, selected_data)
