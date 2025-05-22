@@ -50,38 +50,79 @@ async def send_greeting(user_id, selected_data):
         day = datetime.date.today().strftime("%d/%m/%Y")  # Обновляем дату
         course_data = course_today(selected_data, day)
         single_line = " ".join(course_data.splitlines())
-        # logger.info(f"Course data for {day}: {single_line}")
+
+        # Создаем паттерн для выбранной валюты с учетом возможных пробелов и форматирования
+        currency_pattern = re.compile(
+            re.escape(selected_data) + r"\s*=\s*(\d+[,.]\d+)",
+            re.IGNORECASE
+        )
+
+        # Извлекаем текущий курс
+        current_match = currency_pattern.search(course_data)
+        if current_match:
+            current_course_str = current_match.group(1).replace(',', '.')
+            current_course = float(current_course_str)
+        else:
+            logger.error(f"Курс для '{selected_data}' не найден в текущих данных")
+            return
+
+            # Извлекаем последний сохраненный курс
+            last_match = currency_pattern.search(last_course_data) if last_course_data else None
+            if last_match:
+                last_course_str = last_match.group(1).replace(',', '.')
+                last_course = float(last_course_str)
+            else:
+                # Если нет предыдущих данных, считаем курс новым
+                last_course = None
+
+                # Сравниваем курсы
+                if last_course is None or current_course != last_course:
+                    await bot.send_message(user_id, course_data)
+                    await update_last_course_data(db_pool, user_id, course_data)
+                    logger.info(f"Новый курс {selected_data} отправлен пользователю {user_id}")
+                else:
+                    logger.info(f"Курс {selected_data} не изменился, отправка не требуется")
 
         if course_data != f"Данные на {day} не опубликованы":
-            last_course_data = await get_last_course_data(db_pool, user_id)
-            # logger.info(f"Last course data from DB: {last_course_data}")
+                last_course_data = await get_last_course_data(db_pool, user_id)
+                logger.info(f"Last course data from DB: {last_course_data}")
 
-            # Извлекаем курс доллара из course_data
-            dollar_course_match = re.search(r"Доллар США = (\d+\.\d+)", course_data)
-            if dollar_course_match:
-                current_dollar_course = float(dollar_course_match.group(1))
-                # logger.info(f"Extracted dollar course: {current_dollar_course}")
-
-                # Извлекаем курс доллара из last_course_data
-                last_dollar_course_match = re.search(r"Доллар США = (\d+\.\d+)", last_course_data)
-                if last_dollar_course_match:
-                    last_dollar_course = float(last_dollar_course_match.group(1))
-
-                    # Сравниваем текущий курс с последним сохраненным
-                    if current_dollar_course != last_dollar_course:
-                        await bot.send_message(user_id, course_data)
-                        await update_last_course_data(db_pool, user_id, course_data)
-                        logger.info(f"New course data sent to user {user_id}.")
-                    # else:
-                    #     logger.info(f"Course data has not changed. Skipping send.")
-                else:
-                    logger.error("Failed to extract dollar course from last_course_data.")
-            else:
-                logger.error("Failed to extract dollar course from course_data.")
     except Exception as e:
-        logger.error(f"Error. The daily newsletter has been not sent: {e}")
+        logger.error(f"Ошибка при отправке рассылки: {e}")
     finally:
-        await db_pool.close()  # Закрываем соединение с базой данных
+        await db_pool.close()
+
+
+    #     if course_data != f"Данные на {day} не опубликованы":
+    #         last_course_data = await get_last_course_data(db_pool, user_id)
+    #         logger.info(f"Last course data from DB: {last_course_data}")
+    #
+    #         # Извлекаем курс доллара из course_data
+    #         dollar_course_match = re.search(r"Доллар США = (\d+\.\d+)", course_data)
+    #         if dollar_course_match:
+    #             current_dollar_course = float(dollar_course_match.group(1))
+    #             # logger.info(f"Extracted dollar course: {current_dollar_course}")
+    #
+    #             # Извлекаем курс доллара из last_course_data
+    #             last_dollar_course_match = re.search(r"Доллар США = (\d+\.\d+)", last_course_data)
+    #             if last_dollar_course_match:
+    #                 last_dollar_course = float(last_dollar_course_match.group(1))
+    #
+    #                 # Сравниваем текущий курс с последним сохраненным
+    #                 if current_dollar_course != last_dollar_course:
+    #                     await bot.send_message(user_id, course_data)
+    #                     await update_last_course_data(db_pool, user_id, course_data)
+    #                     logger.info(f"New course data sent to user {user_id}.")
+    #                 # else:
+    #                 #     logger.info(f"Course data has not changed. Skipping send.")
+    #             else:
+    #                 logger.error(f"Failed to extract course {last_dollar_course_match} from last_course_data.")
+    #         else:
+    #             logger.error("Failed to extract dollar course from course_data.")
+    # except Exception as e:
+    #     logger.error(f"Error. The daily newsletter has been not sent: {e}")
+    # finally:
+    #     await db_pool.close()  # Закрываем соединение с базой данных
 
 def schedule_daily_greeting(user_id, scheduler, selected_data, day):
     """Запланировать ежедневную рассылку в 7:00 по московскому времени."""
