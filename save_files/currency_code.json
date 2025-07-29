@@ -10,6 +10,11 @@
         "charCode": "AZN"
     },
     {
+        "id": "R01030",
+        "name": "Алжирских динаров",
+        "charCode": "DZD"
+    },
+    {
         "id": "R01035",
         "name": "Фунт стерлингов",
         "charCode": "GBP"
@@ -20,6 +25,11 @@
         "charCode": "AMD"
     },
     {
+        "id": "R01080",
+        "name": "Бахрейнский динар",
+        "charCode": "BHD"
+    },
+    {
         "id": "R01090B",
         "name": "Белорусский рубль",
         "charCode": "BYN"
@@ -28,6 +38,11 @@
         "id": "R01100",
         "name": "Болгарский лев",
         "charCode": "BGN"
+    },
+    {
+        "id": "R01105",
+        "name": "Боливиано",
+        "charCode": "BOB"
     },
     {
         "id": "R01115",
@@ -90,6 +105,11 @@
         "charCode": "IDR"
     },
     {
+        "id": "R01300",
+        "name": "Иранских риалов",
+        "charCode": "IRR"
+    },
+    {
         "id": "R01335",
         "name": "Тенге",
         "charCode": "KZT"
@@ -115,9 +135,24 @@
         "charCode": "CNY"
     },
     {
+        "id": "R01395",
+        "name": "Кубинских песо",
+        "charCode": "CUP"
+    },
+    {
         "id": "R01500",
         "name": "Молдавских леев",
         "charCode": "MDL"
+    },
+    {
+        "id": "R01503",
+        "name": "Тугриков",
+        "charCode": "MNT"
+    },
+    {
+        "id": "R01520",
+        "name": "Найр",
+        "charCode": "NGN"
     },
     {
         "id": "R01530",
@@ -130,9 +165,19 @@
         "charCode": "NOK"
     },
     {
+        "id": "R01540",
+        "name": "Оманский риал",
+        "charCode": "OMR"
+    },
+    {
         "id": "R01565",
         "name": "Злотый",
         "charCode": "PLN"
+    },
+    {
+        "id": "R01580",
+        "name": "Саудовский риял",
+        "charCode": "SAR"
     },
     {
         "id": "R01585F",
@@ -158,6 +203,11 @@
         "id": "R01675",
         "name": "Батов",
         "charCode": "THB"
+    },
+    {
+        "id": "R01685",
+        "name": "Так",
+        "charCode": "BDT"
     },
     {
         "id": "R01700J",
@@ -195,6 +245,11 @@
         "charCode": "CHF"
     },
     {
+        "id": "R01800",
+        "name": "Эфиопских быров",
+        "charCode": "ETB"
+    },
+    {
         "id": "R01805F",
         "name": "Сербских динаров",
         "charCode": "RSD"
@@ -213,5 +268,10 @@
         "id": "R01820",
         "name": "Иен",
         "charCode": "JPY"
+    },
+    {
+        "id": "R02005",
+        "name": "Кьятов",
+        "charCode": "MMK"
     }
 ]
