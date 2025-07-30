@@ -1,4 +1,4 @@
-# CurrencyRate Bot - Мониторинг курсов валют
+# Currency-Rate-Bot - Мониторинг курсов валют
 Бот для отслеживания актуальных курсов валют с удобным интерфейсом в Telegram. Получайте уведомления об изменениях курсов и конвертируйте валюты прямо в чате.
 <hr>
 
@@ -46,8 +46,8 @@ Docker (Контейнеризация)
 Клонируйте репозиторий:
 
 ```bash
-git clone https://github.com/pavangelika/CurrencyRate.git
-cd CurrencyRate
+git clone https://github.com/pavangelika/Currency-Rate-Bot.git
+cd Currency-Rate-Bot
 ```
 Установите зависимости:
 ```bash
